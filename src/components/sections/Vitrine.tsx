@@ -28,9 +28,24 @@ export function firstLook(p: Product) {
 /**
  * Die Auslage: alle Teile stehen nebeneinander auf einer Kante.
  * Zeiger auf ein Teil → nur dieses bleibt „beleuchtet“, die anderen treten zurück.
- * Klick → Products.tsx fährt nah heran (Bild wächst in die Produktbühne, Kaufkarte kommt dazu).
+ * Klick → Products.tsx fährt wie eine Kamera auf das Teil zu: Die Auslage liegt dann als Ebene über der
+ * Produktbühne (flying), die anderen Teile und die Schilder sind ausgeblendet (zoomed).
  */
-export function Vitrine({ hidden, onOpen }: { hidden: boolean; onOpen: (slug: string) => void }) {
+export function Vitrine({
+  hidden,
+  flying,
+  zoomed,
+  sel,
+  onOpen,
+  onPeek,
+}: {
+  hidden: boolean;
+  flying: boolean;
+  zoomed: boolean;
+  sel: string | null;
+  onOpen: (slug: string) => void;
+  onPeek: (slug: string) => void;
+}) {
   const root = useRef<HTMLDivElement>(null);
   const { ready, reduced } = useMotion();
 
@@ -87,7 +102,12 @@ export function Vitrine({ hidden, onOpen }: { hidden: boolean; onOpen: (slug: st
   }, [ready, reduced]);
 
   return (
-    <div ref={root} className="vitrine" hidden={hidden}>
+    <div
+      ref={root}
+      className={`vitrine${flying ? ' is-flying' : ''}${zoomed ? ' is-zoomed' : ''}`}
+      hidden={hidden}
+      aria-hidden={flying || undefined}
+    >
       <p className="vitrine__hint mono">
         <span aria-hidden="true" className="vitrine__pulse" />
         Teil wählen – näher rangehen
@@ -99,10 +119,18 @@ export function Vitrine({ hidden, onOpen }: { hidden: boolean; onOpen: (slug: st
           const from = minPrice(p);
           const many = p.variants.some((v) => v.priceCents !== from);
           return (
-            <li key={p.code} style={{ ['--f' as string]: look.f, ['--drop' as string]: look.drop, ['--i' as string]: i }}>
-              <button type="button" className="vitem" data-slug={p.slug} onClick={() => onOpen(p.slug)}>
+            <li key={p.code} className={sel === p.slug ? 'is-sel' : undefined} style={{ ['--f' as string]: look.f, ['--drop' as string]: look.drop, ['--i' as string]: i }}>
+              <button
+                type="button"
+                className="vitem"
+                data-slug={p.slug}
+                tabIndex={flying ? -1 : undefined}
+                onClick={() => onOpen(p.slug)}
+                onPointerEnter={() => onPeek(p.slug)}
+                onFocus={() => onPeek(p.slug)}
+              >
                 <span className="vitem__shot">
-                  {shot ? <Picture k={shot} alt="" sizes="(max-width: 700px) 46vw, 26vw" /> : null}
+                  {shot ? <Picture k={shot} alt="" sizes="(max-width: 700px) 60vw, 40vw" /> : null}
                 </span>
                 <span className="vitem__label">
                   <span className="vitem__code mono">

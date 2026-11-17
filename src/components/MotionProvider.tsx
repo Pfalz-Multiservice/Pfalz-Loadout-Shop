@@ -36,9 +36,15 @@ export function scrollToId(id: string) {
 /** Ereignisname: ein Produkt in der Auslage öffnen (detail = slug) */
 export const OPEN_EVENT = 'pl:open';
 /** Sanft zu einem Element scrollen (unter die Kopfleiste) */
-export function scrollToEl(el: HTMLElement, offset = -64) {
-  if (lenisRef) lenisRef.scrollTo(el, { offset });
-  else window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY + offset, behavior: 'smooth' });
+export function scrollToEl(el: HTMLElement, offset = -64, seconds?: number) {
+  scrollToY(el.getBoundingClientRect().top + window.scrollY + offset, seconds);
+}
+/** Sanft zu einer Seitenposition scrollen; mit `seconds` im Takt einer Kamerafahrt (weich an- und abbremsen) */
+export function scrollToY(y: number, seconds?: number) {
+  const top = Math.max(0, y);
+  const inOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  if (lenisRef) lenisRef.scrollTo(top, seconds ? { duration: seconds, easing: inOut, force: true } : {});
+  else window.scrollTo({ top, behavior: 'smooth' });
 }
 /** Ohne Animation zu einem Element springen (z. B. innerhalb eines Ansichtswechsels) */
 export function jumpToEl(el: HTMLElement, offset = -64) {

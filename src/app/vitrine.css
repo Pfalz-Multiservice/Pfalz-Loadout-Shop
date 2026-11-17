@@ -367,33 +367,145 @@
 }
 
 /* ------------------------------------------------------------------
-   Kamerafahrt (View Transition): Foto wandert zwischen Auslage und Bühne,
-   die Kaufkarte kommt auf halbem Weg dazu. Ohne Unterstützung / bei
-   „Bewegung reduzieren“: sofortiger Wechsel.
+   Kamerafahrt: Beim Klick liegt die Auslage als Ebene über der Produktbühne
+   (.is-flying) und fährt auf das gewählte Teil zu (Transform der Reihe, siehe
+   Products.tsx). .is-zoomed = Licht aus: andere Teile, Schilder und weißer
+   Grund sind ausgeblendet. Am Ende übernimmt das scharfe Foto der Bühne.
    ------------------------------------------------------------------ */
-html.pl-vt::view-transition-group(pl-shot) {
-  z-index: 2;
-  animation-duration: 0.75s;
-  animation-timing-function: cubic-bezier(0.3, 0.9, 0.2, 1);
+.products {
+  position: relative;
+  /* die herangezoomte Auslage ragt seitlich über den Bildschirm → kein Quer-Scrollen */
+  overflow-x: clip;
 }
-html.pl-vt::view-transition-old(pl-shot),
-html.pl-vt::view-transition-new(pl-shot) {
-  animation-duration: 0.45s;
+.vitrine.is-flying {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  overflow: visible;
+  pointer-events: none;
+  transition:
+    background-color 0.45s ease 0.3s,
+    border-color 0.45s ease 0.3s;
 }
-html.pl-vt::view-transition-old(root),
-html.pl-vt::view-transition-new(root) {
-  animation-duration: 0.45s;
+.vitrine.is-flying .vitrine__row {
+  transform-origin: 0 0;
+  will-change: transform;
 }
-html.pl-vt::view-transition-new(pl-sheet) {
-  animation: plsheet 0.6s 0.26s var(--ease) both;
+.vitrine.is-flying .vitem__shot {
+  transform: none;
+  filter: none;
+  opacity: 1;
+  animation: none;
+  transition: opacity 0.6s ease 0.3s;
 }
-@keyframes plsheet {
+.vitrine.is-flying .vitem__label,
+.vitrine.is-flying .vitrine__hint {
+  animation: none;
+  transition: opacity 0.5s ease 0.45s;
+}
+.vitrine.is-zoomed {
+  background-color: transparent;
+  border-color: transparent;
+  transition:
+    background-color 0.4s ease 0.2s,
+    border-color 0.4s ease 0.2s;
+}
+.vitrine.is-zoomed li:not(.is-sel) .vitem__shot {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.vitrine.is-zoomed .vitem__label,
+.vitrine.is-zoomed .vitrine__hint {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* Ankunft: Bühne wartet unsichtbar, bis die Kamera da ist; die Kaufkarte kommt auf halbem Weg Zeile für Zeile */
+.products.is-arriving .stage__frame,
+.products.is-arriving .pcard__media {
+  animation: plland 0.32s ease backwards;
+  animation-delay: 1.06s;
+}
+.products.is-arriving .stage__visual > :not(.stage__frame),
+.products.is-arriving .stage__visual.hud::before,
+.products.is-arriving .stage__visual.hud::after {
+  animation: plland 0.4s ease backwards;
+  animation-delay: 1.25s;
+}
+.products.is-arriving .vbar,
+.products.is-arriving .arsenal__nav {
+  animation: plland 0.5s ease backwards;
+  animation-delay: 0.6s;
+}
+.products.is-arriving .stage,
+.products.is-arriving .pcard {
+  animation: plland 0.4s ease backwards;
+  animation-delay: 0.3s;
+}
+.products.is-arriving .sheet > *,
+.products.is-arriving .pcard__body > * {
+  animation: plline 0.6s var(--ease) backwards;
+  animation-delay: calc(0.45s + var(--n, 0) * 0.06s);
+}
+.products.is-arriving .sheet > :nth-child(2),
+.products.is-arriving .pcard__body > :nth-child(2) {
+  --n: 1;
+}
+.products.is-arriving .sheet > :nth-child(3),
+.products.is-arriving .pcard__body > :nth-child(3) {
+  --n: 2;
+}
+.products.is-arriving .sheet > :nth-child(4),
+.products.is-arriving .pcard__body > :nth-child(4) {
+  --n: 3;
+}
+.products.is-arriving .sheet > :nth-child(5),
+.products.is-arriving .pcard__body > :nth-child(5) {
+  --n: 4;
+}
+.products.is-arriving .sheet > :nth-child(6),
+.products.is-arriving .pcard__body > :nth-child(6) {
+  --n: 5;
+}
+.products.is-arriving .sheet > :nth-child(7),
+.products.is-arriving .pcard__body > :nth-child(7) {
+  --n: 6;
+}
+.products.is-arriving .sheet > :nth-child(8) {
+  --n: 7;
+}
+.products.is-arriving .sheet > :nth-child(n + 9) {
+  --n: 8;
+}
+@keyframes plland {
   from {
     opacity: 0;
-    transform: translateX(40px);
   }
 }
-/* Während der Fahrt kein zusätzliches Einblenden der Fotos (sonst flackert der Übergang) */
+@keyframes plline {
+  from {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+}
+
+/* Rückfahrt: Bühne blendet aus, das Kachelfoto der Auslage übernimmt sofort den Platz des großen Fotos */
+.products.is-leaving .products__detail {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.products.is-leaving .stage__frame,
+.products.is-leaving .pcard__media {
+  visibility: hidden;
+}
+
+/* Wechsel zwischen zwei geöffneten Teilen: weiches Überblenden (View Transition) */
+html.pl-vt::view-transition-old(root),
+html.pl-vt::view-transition-new(root) {
+  animation-duration: 0.4s;
+}
 html.pl-vt .stage__shot,
 html.pl-vt .pcard__shot {
   animation-duration: 0s;
