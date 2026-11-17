@@ -26,6 +26,13 @@ Deploy-Status prüfen: `curl -s https://api.github.com/repos/Pfalz-Loadout/Pfalz
 - IFAK: Rückseiten, leere Innenansichten, Trägerplatte abgelöst, Infopunkte (Deckel, Gummischlaufen, Netzfach, Trägerplatte, Abreißen, Riemen), Packliste M.A.R.C.H., Labor (Schnellzugriff-Foto, Reißverschluss-Detail).
 - Sling: 3 Bilder je Farbe; „+ QD-Öse“ teilt die Vorschau untereinander (Riemen oben, QD an M-LOK unten, `optionSplit`).
 
+## Auslage (17.11.2026) – Artikelauswahl nach Vorbild ascentastudio.com/pluie
+- `src/components/sections/Vitrine.tsx` + `src/app/vitrine.css`: alle 4 Teile stehen nebeneinander auf einer Kante (Handy: 2 oben, 2 unten). Zeiger auf ein Teil → nur dieses bleibt hell. Größen/Standlinie je Teil in `LOOK` (f, drop).
+- `Products.tsx` steuert: Klick → Foto wächst per View Transition in die Produktbühne (Desktop) bzw. Karte (Handy), Kaufkarte kommt dazu; „Zur Auslage“ / Esc fährt zurück; Schnellwechsel-Leiste (Desktop). Ohne Browser-Unterstützung oder bei „Bewegung reduzieren“: sofortiger Wechsel.
+- Sichtbar ist immer nur das geöffnete Teil; alle Bühnen bleiben im HTML. Produkt-Anker (`/#ifak`, Hero-Codes, Packliste) öffnen das Teil über `scrollToId` → Ereignis `pl:open`.
+- Noch nicht gebaut (Idee aus der Vorlage): Teil fliegt beim „In den Warenkorb“ sichtbar in den Warenkorb.
+- In der gedrosselten Vorschau liefen die Übergänge nur ruckweise → Kamerafahrt auf echtem Gerät ansehen.
+
 ## Weiterhin offen (älter)
 - Vercel-Variablen SMTP_PASS, PAYPAL_CLIENT_ID/SECRET (Sandbox), BANK_* → Testbestellung
 - Versandpauschale/Gratisgrenze (Platzhalter 4,90 € / 75 €)

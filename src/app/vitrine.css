@@ -1,0 +1,400 @@
+/* ==================================================================
+   Auslage: alle Teile nebeneinander auf einer Kante.
+   Zeiger auf ein Teil → nur dieses bleibt beleuchtet. Klick → nah heranfahren
+   (Foto wächst in die Produktbühne, Kaufkarte kommt dazu).
+   ================================================================== */
+[hidden] {
+  display: none !important;
+}
+
+.vitrine {
+  position: relative;
+  margin-top: clamp(20px, 4vh, 40px);
+  padding: clamp(16px, 3vh, 28px) 0 clamp(24px, 5vh, 48px);
+  /* reines Weiß wie der Grund der Produktfotos → die Fotos stehen ohne sichtbare Kanten im Raum */
+  background: #ffffff;
+  border-block: 1px solid var(--line);
+  overflow: hidden;
+  --px: 0;
+}
+.vitrine__hint {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 clamp(8px, 2vh, 20px);
+  color: var(--bone-3);
+}
+.vitrine__pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--signal);
+  animation: vpulse 1.8s ease-in-out infinite;
+}
+@keyframes vpulse {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+
+.vitrine__row {
+  /* --u = Breite des größten Teils; alle anderen sind über --f daran gekoppelt */
+  --u: min(24vw, 320px, 46svh);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  margin: 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+}
+.vitrine__row > li {
+  display: flex;
+  justify-content: center;
+}
+
+.vitem {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.vitem__shot {
+  --w: calc(var(--u) * var(--f));
+  position: relative;
+  display: block;
+  width: var(--w);
+  aspect-ratio: 3 / 4;
+  /* Leerraum unter dem Produkt einziehen → Produkt steht auf der Kante (= Oberkante des Schilds) */
+  margin-bottom: calc(var(--w) * -1.3333 * var(--drop));
+  transform-origin: 50% calc(100% * (1 - var(--drop)));
+  transform: translate3d(calc(var(--px) * var(--f) * -12px), var(--ty, 0%), 0) scale(var(--sc, 1));
+  transition:
+    transform 0.7s var(--ease),
+    opacity 0.45s ease,
+    filter 0.45s ease;
+}
+.vitem__shot picture,
+.vitem__shot img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.vitem__shot picture {
+  background: transparent !important;
+}
+.vitem__shot img {
+  object-fit: contain;
+  /* Fotogrund ist 253–255 statt reinem Weiß → minimal anheben, damit keine Bildkante zu sehen ist */
+  filter: brightness(1.025);
+}
+
+/* Schild unter dem Teil (wie ein Preisschild an der Regalkante) */
+.vitem__label {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 14px clamp(10px, 1.3vw, 20px) 0;
+  border-top: 1px solid var(--line-2);
+  transition: opacity 0.45s ease;
+}
+/* oranges Zugband: fährt aus, sobald das Teil beleuchtet ist */
+.vitem__label::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 100%;
+  height: 3px;
+  background: var(--signal);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s var(--ease);
+}
+.vitem__code {
+  color: var(--bone-3);
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+.vitem__name {
+  font-size: clamp(1.25rem, 1.9vw, 1.7rem);
+  line-height: 1.05;
+  white-space: nowrap;
+}
+.vitem__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--bone-2);
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+.vitem__dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.vitem__dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(20, 20, 20, 0.18);
+}
+.vitem__go {
+  display: none;
+  margin-top: 6px;
+  color: var(--signal-ink);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+/* Beleuchtung: nur das Teil unter dem Zeiger (oder mit Tastaturfokus) bleibt hell */
+@media (hover: hover) {
+  .vitem__go {
+    display: block;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition:
+      opacity 0.3s ease,
+      transform 0.45s var(--ease);
+  }
+  .vitrine__row:has(.vitem:hover) .vitem:not(:hover) .vitem__shot {
+    opacity: 0.2;
+    filter: grayscale(1);
+  }
+  .vitrine__row:has(.vitem:hover) .vitem:not(:hover) .vitem__label {
+    opacity: 0.45;
+  }
+  .vitem:hover .vitem__shot {
+    --ty: -1.2%;
+    --sc: 1.05;
+  }
+  .vitem:hover .vitem__label::before {
+    transform: scaleX(1);
+  }
+  .vitem:hover .vitem__code {
+    color: var(--signal-ink);
+  }
+  .vitem:hover .vitem__go {
+    opacity: 1;
+    transform: none;
+  }
+}
+.vitrine__row:has(.vitem:focus-visible) .vitem:not(:focus-visible) .vitem__shot {
+  opacity: 0.2;
+  filter: grayscale(1);
+}
+.vitem:focus-visible {
+  outline: none;
+}
+.vitem:focus-visible .vitem__shot {
+  --ty: -1.2%;
+  --sc: 1.05;
+}
+.vitem:focus-visible .vitem__label {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+}
+.vitem:focus-visible .vitem__label::before {
+  transform: scaleX(1);
+}
+.vitem:active .vitem__shot {
+  --sc: 0.97;
+  transition-duration: 0.15s;
+}
+
+/* Auftritt: Teile stellen sich nacheinander auf (Klassen setzt Vitrine.tsx, danach werden sie wieder entfernt) */
+.vitrine.is-armed:not(.is-in) .vitem__shot,
+.vitrine.is-armed:not(.is-in) .vitem__label {
+  opacity: 0;
+}
+.vitrine.is-armed.is-in .vitem__shot {
+  animation: vrise 0.9s var(--ease) backwards;
+  animation-delay: calc(var(--i) * 110ms);
+}
+.vitrine.is-armed.is-in .vitem__label {
+  animation: vfade 0.6s ease backwards;
+  animation-delay: calc(var(--i) * 110ms + 250ms);
+}
+@keyframes vrise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 9%, 0) scale(0.96);
+  }
+}
+@keyframes vfade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Handy: zwei oben, zwei unten – jede Reihe auf ihrer eigenen Kante */
+@media (max-width: 700px) {
+  .vitrine__row {
+    --u: min(40vw, 210px);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: end;
+    row-gap: 22px;
+    padding-inline: 0;
+  }
+  .vitem {
+    width: 100%;
+  }
+  .vitem__label {
+    padding-inline: var(--gutter);
+  }
+  .vitem__name {
+    font-size: 1.3rem;
+  }
+  .vitem__label {
+    padding-top: 10px;
+  }
+  .vitrine {
+    padding-bottom: 28px;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Geöffnetes Teil: Leiste mit „Zur Auslage“ und Schnellwechsel
+   ------------------------------------------------------------------ */
+.vbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: clamp(16px, 3vh, 32px);
+  padding-block: 12px;
+}
+.vbar__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line-2);
+  background: var(--basalt-2);
+  color: var(--bone);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.vbar__back span {
+  transition: transform 0.3s var(--ease);
+}
+.vbar__back:hover {
+  border-color: var(--bone);
+}
+.vbar__back:hover span {
+  transform: translateX(-4px);
+}
+.vbar__back:focus-visible,
+.vbar__tab:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+.vbar__tabs {
+  display: flex;
+  gap: 4px;
+}
+.vbar__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 3px 12px 3px 4px;
+  border: 0;
+  border-bottom: 2px solid var(--line-2);
+  background: none;
+  color: var(--bone-3);
+  font-size: 0.66rem;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+.vbar__tab:hover {
+  color: var(--bone);
+}
+.vbar__tab[aria-pressed='true'] {
+  border-bottom-color: var(--signal);
+  color: var(--bone);
+}
+.vbar__thumb {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.vbar__tab:hover .vbar__thumb,
+.vbar__tab[aria-pressed='true'] .vbar__thumb {
+  opacity: 1;
+}
+.vbar__thumb picture,
+.vbar__thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.vbar__thumb img {
+  object-fit: contain;
+}
+@media (max-width: 960px) {
+  .vbar__tabs {
+    display: none;
+  }
+  .vbar {
+    margin-top: 12px;
+    padding-block: 8px 0;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Kamerafahrt (View Transition): Foto wandert zwischen Auslage und Bühne,
+   die Kaufkarte kommt auf halbem Weg dazu. Ohne Unterstützung / bei
+   „Bewegung reduzieren“: sofortiger Wechsel.
+   ------------------------------------------------------------------ */
+html.pl-vt::view-transition-group(pl-shot) {
+  z-index: 2;
+  animation-duration: 0.75s;
+  animation-timing-function: cubic-bezier(0.3, 0.9, 0.2, 1);
+}
+html.pl-vt::view-transition-old(pl-shot),
+html.pl-vt::view-transition-new(pl-shot) {
+  animation-duration: 0.45s;
+}
+html.pl-vt::view-transition-old(root),
+html.pl-vt::view-transition-new(root) {
+  animation-duration: 0.45s;
+}
+html.pl-vt::view-transition-new(pl-sheet) {
+  animation: plsheet 0.6s 0.26s var(--ease) both;
+}
+@keyframes plsheet {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+/* Während der Fahrt kein zusätzliches Einblenden der Fotos (sonst flackert der Übergang) */
+html.pl-vt .stage__shot,
+html.pl-vt .pcard__shot {
+  animation-duration: 0s;
+}

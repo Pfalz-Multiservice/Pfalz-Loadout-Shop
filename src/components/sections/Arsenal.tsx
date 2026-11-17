@@ -5,9 +5,11 @@ import { PRODUCTS } from '@/data/shop';
 import { ProductCard } from './ProductCard';
 
 /** Mobil: Produkte als Wisch-Karussell mit Fortschrittsanzeige */
-export function Arsenal() {
+export function Arsenal({ onActive }: { onActive?: (index: number) => void } = {}) {
   const track = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  const report = useRef(onActive);
+  report.current = onActive;
 
   useEffect(() => {
     const el = track.current;
@@ -15,7 +17,12 @@ export function Arsenal() {
     const cards = [...el.querySelectorAll<HTMLElement>('.pcard')];
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) if (e.isIntersecting) setActive(cards.indexOf(e.target as HTMLElement));
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const i = cards.indexOf(e.target as HTMLElement);
+          setActive(i);
+          report.current?.(i);
+        }
       },
       { root: el, threshold: 0.6 },
     );

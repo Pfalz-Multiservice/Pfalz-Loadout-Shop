@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
+import { PRODUCTS } from '@/data/shop';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -23,18 +24,27 @@ export const useMotion = () => useContext(MotionCtx);
 let lenisRef: Lenis | null = null;
 /** Für Anker-Links: sanft scrollen, wenn Lenis aktiv ist */
 export function scrollToId(id: string) {
-  let el = document.getElementById(id);
-  // Mobil: Produktbühnen sind ausgeblendet → zur passenden Karte im Karussell
-  if (el && el.offsetParent === null) {
-    const card = document.getElementById(`${id}-karte`);
-    if (card) {
-      card.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
-      el = card.closest<HTMLElement>('.products') ?? card;
-    }
+  // Produkt-Anker: Die Produkte liegen in der Auslage → dort öffnen (Products.tsx hört auf dieses Ereignis)
+  if (PRODUCTS.some((p) => p.slug === id)) {
+    window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: id }));
+    return;
   }
+  const el = document.getElementById(id);
   if (!el) return;
-  if (lenisRef) lenisRef.scrollTo(el, { offset: -64 });
-  else el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  scrollToEl(el);
+}
+/** Ereignisname: ein Produkt in der Auslage öffnen (detail = slug) */
+export const OPEN_EVENT = 'pl:open';
+/** Sanft zu einem Element scrollen (unter die Kopfleiste) */
+export function scrollToEl(el: HTMLElement, offset = -64) {
+  if (lenisRef) lenisRef.scrollTo(el, { offset });
+  else window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY + offset, behavior: 'smooth' });
+}
+/** Ohne Animation zu einem Element springen (z. B. innerhalb eines Ansichtswechsels) */
+export function jumpToEl(el: HTMLElement, offset = -64) {
+  const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY + offset);
+  if (lenisRef) lenisRef.scrollTo(top, { immediate: true, force: true });
+  else window.scrollTo({ top, behavior: 'instant' });
 }
 export function stopScroll(stop: boolean) {
   if (!lenisRef) return;

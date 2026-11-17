@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Picture } from '../Picture';
+import { scrollToId } from '../MotionProvider';
 
 /**
  * IFAK-Packliste nach M.A.R.C.H. – eigene Texte.
@@ -224,7 +225,14 @@ export function Packliste() {
               Die Pouch bleibt am Rucksack, bis du sie brauchst. Ein Zug an der Lasche, und du nimmst das ganze Kit mit zum
               Verletzten – aufgeklappt liegt alles offen vor dir.
             </p>
-            <a className="btn btn--ghost pack__cta" href="#ifak">
+            <a
+              className="btn btn--ghost pack__cta"
+              href="#ifak"
+              onClick={(e) => {
+                e.preventDefault();
+                scrollToId('ifak');
+              }}
+            >
               Zur IFAK Pouch
             </a>
           </div>
