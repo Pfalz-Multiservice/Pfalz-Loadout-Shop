@@ -7,12 +7,16 @@
   display: none !important;
 }
 
+/* gleicher Abstand wie beim geöffneten Teil (.products__detail) → beide beginnen an derselben Stelle */
 .vitrine {
   --media-h: clamp(250px, 38svh, 420px);
   position: relative;
-  margin-top: clamp(28px, 5vh, 56px);
+  margin-top: 72px;
 }
 .vgrid {
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
@@ -410,7 +414,8 @@
   .vbar__tabs {
     display: none;
   }
-  .products__detail {
+  .products__detail,
+  .vitrine {
     margin-top: 68px;
   }
 }
@@ -435,24 +440,44 @@
   will-change: transform, opacity;
 }
 
-/* Öffnen: Auslage liegt als Ebene an ihrem Platz und blendet aus */
+/* 1. Licht aus: Raster und andere Teile blenden aus, nur das gewählte Teil bleibt stehen */
+.vitrine:is(.is-picking, .is-leaving) {
+  pointer-events: none;
+}
+.vitrine:is(.is-picking, .is-leaving) .vgrid {
+  background-color: transparent;
+  border-color: transparent;
+}
+.vitrine:is(.is-picking, .is-leaving) .vcard {
+  background: transparent;
+}
+.vitrine:is(.is-picking, .is-leaving) :is(.vcard__top, .vcard__info, .vcard__go),
+.vitrine:is(.is-picking, .is-leaving) .vcard:not(.is-sel) .vcard__shot,
+.vitrine:is(.is-picking, .is-leaving) .vcard__btn::before {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.vitrine.is-picking .vcard.is-sel .vcard__shot {
+  transform: none;
+  transition: transform 0.3s var(--ease);
+}
+/* 2. Flug: Auslage liegt als leere Ebene an ihrem Platz, das Foto fliegt als eigene Ebene */
 .vitrine.is-leaving {
   position: absolute;
   left: 0;
   right: 0;
   z-index: 6;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.38s ease;
 }
-.vitrine .vcard.is-sel .vcard__shot {
+.vitrine:is(.is-leaving, .is-returning) .vcard.is-sel .vcard__shot {
   visibility: hidden;
 }
-/* Zurück: Karten kommen wieder, das gewählte Foto landet in seiner Karte */
+/* Zurück: Karten kommen wieder – nur Deckkraft, keine Bewegung (das Foto zielt auf die exakte Kartenposition) */
 .vitrine.is-returning .vcard__btn {
   pointer-events: none;
 }
-/* nur Deckkraft, keine Bewegung: das zurückfliegende Foto zielt auf die exakte Kartenposition */
+.vitrine.is-returning .vgrid {
+  animation: vin 0.5s ease 0.25s backwards;
+}
 .vitrine.is-returning .vcard__info,
 .vitrine.is-returning .vcard__top,
 .vitrine.is-returning .vcard:not(.is-sel) .vcard__shot {
@@ -473,25 +498,41 @@
 .products.fly-frame .stage__visual,
 .products.fly-frame .pcard__media {
   opacity: 1;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.3s ease;
 }
-/* Infopunkte, Schloss, Pfeile und das Foto selbst erst nach der Landung (das fliegende Foto deckt es ab) */
-.products.fly-frame .stage__visual > :not(.stage__frame),
-.products.fly-frame .pcard__media > :not(.pcard__shot),
+/* Das große Foto erst bei der Übergabe (fly-land), Infopunkte, Schloss, Pfeile erst danach */
 .products.fly-frame .stage__frame picture,
 .products.fly-frame .pcard__shot picture {
   /* !important: die Bühnenfotos tragen ihre Deckkraft inline */
   opacity: 0 !important;
 }
+.products:is(.fly-hide, .fly-frame, .fly-land) .stage__visual > :not(.stage__frame),
+.products:is(.fly-hide, .fly-frame, .fly-land) .pcard__media > :not(.pcard__shot) {
+  opacity: 0;
+  pointer-events: none;
+  transition: none;
+}
 .stage__visual > :not(.stage__frame),
 .pcard__media > :not(.pcard__shot) {
-  transition: opacity 0.45s ease;
+  transition: opacity 0.5s ease;
+}
+.products.fly-land .stage__frame picture,
+.products.fly-land .pcard__shot picture {
+  transition: opacity 0.4s ease;
+}
+/* Beim Flug keine eigene Einblend-Animation des großen Fotos (Skalierung + Aufhellen) – sonst ruckt die Übergabe */
+.products:is(.fly-hide, .fly-frame, .fly-land) :is(.stage__shot, .pcard__shot) {
+  animation: none;
+}
+/* Kein Scan-Strahl quer über die Bühne, während das Foto ankommt */
+.products:is(.fly-hide, .fly-frame, .fly-land) .stage .scan__beam {
+  visibility: hidden;
 }
 /* Zurück: Bühne und Kaufkarte blenden schnell aus */
 .products.fly-out .products__detail {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.28s ease;
 }
 
 /* Kaufkarte: Zeilen laufen nacheinander ein */

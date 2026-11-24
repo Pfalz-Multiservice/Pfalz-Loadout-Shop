@@ -13,15 +13,19 @@ import { Vitrine, firstLook } from './Vitrine';
 type VT = { finished: Promise<void>; skipTransition?: () => void };
 type VTDoc = Document & { startViewTransition?: (cb: () => void) => VT };
 type Rect = { x: number; y: number; w: number; h: number };
-type Phase = 'leaving' | 'returning' | null;
+type Phase = 'picking' | 'leaving' | 'returning' | null;
 
 /** Flugdauer in ms (hin / zurück) */
-const FLY_IN = 1000;
-const FLY_OUT = 850;
+const FLY_IN = 900;
+const FLY_OUT = 800;
+/** Ausrichten der Seite vor dem Flug (die Seite steht still, während das Foto fliegt) */
+const ALIGN = 480;
 /** so lange laufen die Zeilen der Kaufkarte nacheinander ein (vitrine.css, .is-arriving) */
 const ARRIVE = 1800;
 const EASE = 'cubic-bezier(0.65, 0, 0.35, 1)';
 const HDR = 64;
+/** Abstand der Auslage bzw. des geöffneten Teils unter der Kopfleiste */
+const GAP = 8;
 
 const isSlug = (s: string) => PRODUCTS.some((p) => p.slug === s);
 const shown = (el: Element | null | undefined): el is HTMLElement => !!el && el.getClientRects().length > 0;
@@ -30,6 +34,7 @@ const rectOf = (el: Element): Rect => {
   return { x: r.left, y: r.top, w: r.width, h: r.height };
 };
 const wait = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+
 /**
  * Auf das Ende einer Animation warten – mit Sicherung: Läuft sie nicht (Tab im Hintergrund pausiert Animationen),
  * wird sie nach Ablauf der Zeit zu Ende gesetzt, damit die Seite nie in einem Zwischenzustand hängen bleibt.
@@ -44,6 +49,16 @@ async function done(anim: Animation, ms: number) {
   clearTimeout(t);
 }
 
+/** Sanft zu einer Seitenposition scrollen und warten, bis sie erreicht ist (danach exakt setzen) */
+async function align(y: number) {
+  const target = Math.max(0, Math.min(y, document.documentElement.scrollHeight - window.innerHeight));
+  if (Math.abs(window.scrollY - target) < 3) return;
+  scrollToY(target, ALIGN / 1000);
+  const t0 = performance.now();
+  while (Math.abs(window.scrollY - target) > 1 && performance.now() - t0 < ALIGN + 500) await wait(30);
+  jumpToY(target);
+}
+
 /** Das große Foto eines Teils: Bühne (Desktop) oder Karte (Handy) – mit dem gerade sichtbaren Bild */
 function bigPhoto(slug: string) {
   const frame = document.getElementById(slug)?.querySelector<HTMLElement>('.stage__frame');
@@ -53,13 +68,16 @@ function bigPhoto(slug: string) {
   const pic = pics.find((p) => p.style.opacity !== '0') ?? pics[0];
   const img = pic?.querySelector('img');
   if (!img) return null;
-  // Fläche, die das Foto im Rahmen wirklich einnimmt (object-fit: contain)
-  const r = rectOf(img);
+  // Fläche, die das Foto im Rahmen wirklich einnimmt (object-fit: contain).
+  // Gemessen am unbewegten Rahmen – das Foto selbst kann gerade eine Einblend-Animation (Skalierung) haben.
+  const base = box.classList.contains('pcard__shot') && box.parentElement ? box.parentElement : box;
+  const br = base.getBoundingClientRect();
+  const r = { x: br.left + base.clientLeft, y: br.top + base.clientTop, w: base.clientWidth, h: base.clientHeight };
   const ar = Number(img.getAttribute('width')) / Number(img.getAttribute('height')) || 1;
   const w = r.w / r.h > ar ? r.h * ar : r.w;
   const h = w / ar;
   const key = (img.currentSrc || img.src).match(/\/media\/(.+)-\d+\.(?:webp|avif)/)?.[1];
-  return { rect: { x: r.x + (r.w - w) / 2, y: r.y + (r.h - h) / 2, w, h }, key };
+  return { rect: { x: r.x + (r.w - w) / 2, y: r.y + (r.h - h) / 2, w, h }, key, img };
 }
 
 /** Wo das freigestellte Bild der Karte auf dem großen Foto liegt */
@@ -72,26 +90,53 @@ function landing(slug: string, btn: HTMLElement) {
   return { x: P.x + l * P.w, y: P.y + t * P.h, w: (r - l) * P.w, h: (b - t) * P.h };
 }
 
-/** Fliegendes Foto: liegt fest am Ziel, startet per Transform an der Ausgangsstelle */
-function ghost(src: string, from: Rect, to: Rect, duration: number) {
+/** Warten, bis das große Foto wirklich geladen und dekodiert ist (höchstens `max` ms) */
+async function photoReady(slug: string, max = 2500) {
+  const img = bigPhoto(slug)?.img;
+  if (!img) return;
+  img.loading = 'eager';
+  if (!(img.complete && img.naturalWidth > 0)) {
+    await Promise.race([
+      new Promise<void>((res) => {
+        img.addEventListener('load', () => res(), { once: true });
+        img.addEventListener('error', () => res(), { once: true });
+      }),
+      wait(max),
+    ]);
+  }
+  // geladen → kurz aufs Dekodieren warten (bleibt das Signal aus, nicht hängen bleiben)
+  await Promise.race([img.decode().catch(() => undefined), wait(300)]);
+}
+
+/** Fliegendes Foto (eigene Ebene, fest positioniert) */
+function makeGhost(src: string, at: Rect) {
   const g = document.createElement('img');
   g.className = 'pl-ghost';
   g.alt = '';
   g.decoding = 'sync';
   g.src = src;
-  Object.assign(g.style, { left: `${to.x}px`, top: `${to.y}px`, width: `${to.w}px`, height: `${to.h}px` });
+  place(g, at);
   document.body.appendChild(g);
+  return g;
+}
+function place(g: HTMLElement, r: Rect) {
+  Object.assign(g.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+}
+/** Foto von `from` nach `to` fliegen lassen (liegt fest am Ziel, startet per Transform an der Ausgangsstelle) */
+function fly(g: HTMLElement, from: Rect, to: Rect, duration: number) {
+  place(g, to);
   const s = from.w / to.w;
-  const anim = g.animate(
+  return g.animate(
     [{ transform: `translate(${from.x - to.x}px, ${from.y - to.y}px) scale(${s})` }, { transform: 'none' }],
     { duration, easing: EASE, fill: 'both' },
   );
-  return { el: g, anim };
 }
 
 /**
- * Ausrüstung: erst die Auslage (vier Karten). Ein Klick lässt das freigestellte Foto in die Produktbühne fliegen,
- * die Karten blenden aus, der Rahmen baut sich um das ankommende Foto auf, die Kaufkarte kommt Zeile für Zeile.
+ * Ausrüstung: erst die Auslage (vier Karten). Klick auf ein Teil:
+ *   1. Licht aus – die anderen Teile blenden aus, die Seite richtet sich ruhig aus (das Teil wandert mit).
+ *   2. Bei stehender Seite fliegt das freigestellte Foto in die Produktbühne, die Kaufkarte kommt Zeile für Zeile.
+ *   3. Übergabe erst, wenn das große Foto geladen ist; danach erscheinen Infopunkte, Schloss usw.
  * „Zur Auslage“ fliegt denselben Weg zurück. Alle Produktbühnen bleiben im HTML (für Suchmaschinen).
  */
 export function Products() {
@@ -111,179 +156,188 @@ export function Products() {
   const reducedRef = useRef(reduced);
   reducedRef.current = reduced;
 
-  const swap = useCallback(async (next: string | null, mode: 'fly' | 'scroll' | 'jump' = 'fly') => {
-    const sec = section.current;
-    const det = detail.current;
-    if (!sec || !det || busy.current) return;
-    const prev = openRef.current;
-    if (next === prev) {
-      if (next && mode !== 'fly') scrollToEl(det, -HDR - 8);
-      return;
-    }
-    const btnOf = (slug: string) => sec.querySelector<HTMLElement>(`.vcard__btn[data-slug="${slug}"]`);
-    const tileImg = (slug: string) => btnOf(slug)?.querySelector<HTMLImageElement>('.vcard__shot img') ?? null;
-    /** Handy: Karussell direkt auf die gewählte Karte stellen */
-    const snapCard = (slug: string) => {
-      const card = document.getElementById(`${slug}-karte`);
-      const track = card?.parentElement;
-      if (card && track && shown(card)) {
-        track.scrollLeft = card.offsetLeft - parseFloat(getComputedStyle(track).paddingLeft);
-        mobileIdx.current = PRODUCTS.findIndex((p) => p.slug === slug);
-      }
-    };
-    const detailY = () => det.getBoundingClientRect().top + window.scrollY - HDR - 8;
-    /** Seitenposition der Auslage: Überschrift + Karten zusammen, wenn beides auf den Bildschirm passt */
-    const closedY = () => {
-      const vit = sec.querySelector<HTMLElement>('.vitrine');
-      const top = sec.getBoundingClientRect().top + window.scrollY;
-      if (!vit) return top - HDR;
-      const r = vit.getBoundingClientRect();
-      const fits = r.bottom - sec.getBoundingClientRect().top <= window.innerHeight - HDR;
-      return fits ? top - HDR : r.top + window.scrollY - HDR - 24;
-    };
-    const settle = (focus: HTMLElement | null | undefined) => {
-      ScrollTrigger.refresh();
-      history.replaceState(null, '', openRef.current ? `#${openRef.current}` : location.pathname + location.search);
-      focus?.focus({ preventScroll: true });
-    };
-    const still = reducedRef.current || typeof Element.prototype.animate !== 'function';
-
-    // ---- Wechsel zwischen zwei geöffneten Teilen: weiches Überblenden ----
-    if (prev && next) {
-      const apply = () => {
-        openRef.current = next;
-        flushSync(() => setOpen(next));
-        snapCard(next);
-      };
-      const doc = document as VTDoc;
-      if (still || typeof doc.startViewTransition !== 'function') {
-        apply();
-        settle(null);
-      } else {
-        busy.current = true;
-        document.documentElement.classList.add('pl-vt');
-        const t = doc.startViewTransition(apply);
-        const guard = window.setTimeout(() => t.skipTransition?.(), 1500);
-        t.finished.finally(() => {
-          clearTimeout(guard);
-          document.documentElement.classList.remove('pl-vt');
-          busy.current = false;
-          settle(null);
-        });
-      }
-      if (mode === 'scroll') scrollToEl(det, -HDR - 8);
-      return;
-    }
-
-    // ---- Öffnen ----
-    if (next) {
-      const img = tileImg(next);
-      const btn = btnOf(next);
-      const from = img && shown(img) && mode === 'fly' && !still ? rectOf(img) : null;
-      openRef.current = next;
-      clearTimeout(arriveT.current);
-      flushSync(() => {
-        setOpen(next);
-        if (from) {
-          setPhase('leaving');
-          setSel(next);
-          setFx(['fly-hide', 'is-arriving']);
-        }
-      });
-      snapCard(next);
-      const to = from && btn ? landing(next, btn) : null;
-      if (!from || !to || !img) {
-        // ohne Flug (Direktlink, Anker von außen, „Bewegung reduzieren“, unbekanntes Foto)
-        flushSync(() => {
-          setPhase(null);
-          setSel(null);
-          setFx([]);
-        });
-        if (mode === 'scroll') scrollToEl(det, -HDR - 8);
-        else jumpToEl(det, -HDR - 8);
-        settle(mode === 'fly' ? backBtn.current : null);
-        return;
-      }
-      busy.current = true;
-      const y = detailY();
-      const dy = window.scrollY - Math.max(0, y);
-      const g = ghost(img.currentSrc || img.src, from, { ...to, y: to.y + dy }, FLY_IN);
-      scrollToY(y, FLY_IN / 1000);
-      arriveT.current = window.setTimeout(() => setFx((f) => f.filter((c) => c !== 'is-arriving')), ARRIVE);
-      // Rahmen baut sich kurz vor der Landung um das ankommende Foto auf
-      await wait(FLY_IN * 0.6);
-      setFx((f) => ['fly-frame', ...f.filter((c) => c !== 'fly-hide')]);
-      await done(g.anim, FLY_IN);
-      if (Math.abs(window.scrollY - Math.max(0, y)) > 2) jumpToY(y);
-      // Landung: echtes Foto unter dem fliegenden einblenden, dann das fliegende ausblenden
-      flushSync(() => {
-        setFx((f) => f.filter((c) => c !== 'fly-frame'));
-        setPhase(null);
-        setSel(null);
-      });
-      await wait(260);
-      const fade = g.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease', fill: 'forwards' });
-      done(fade, 220).then(() => g.el.remove());
-      busy.current = false;
-      settle(backBtn.current);
-      return;
-    }
-
-    // ---- Zurück zur Auslage ----
-    const leaving =
-      prev && shown(sec.querySelector('.products__arsenal')) ? (PRODUCTS[mobileIdx.current]?.slug ?? prev) : prev!;
-    const focusTile = () => btnOf(leaving);
-    clearTimeout(arriveT.current);
-    const btn = btnOf(leaving);
-    const img = tileImg(leaving);
-    const B = !still && mode === 'fly' && btn ? landing(leaving, btn) : null;
-    if (!B || !img) {
-      openRef.current = null;
-      flushSync(() => {
-        setOpen(null);
-        setPhase(null);
-        setSel(null);
-        setFx([]);
-      });
-      jumpToEl(sec, -HDR);
-      settle(focusTile());
-      return;
-    }
-    busy.current = true;
-    const before = det.getBoundingClientRect().top;
-    flushSync(() => {
-      setPhase('returning');
-      setSel(leaving);
-      setFx(['fly-frame', 'fly-out']);
-    });
-    // Karten sind wieder im Seitenfluss → Ansicht nicht springen lassen
-    jumpToEl(det, -(before));
-    const y = closedY();
-    const A = rectOf(img);
-    const dy = window.scrollY - Math.max(0, y);
-    const src = img.currentSrc || img.src;
-    const g = ghost(src, B, { ...A, y: A.y + dy }, FLY_OUT);
-    scrollToY(y, FLY_OUT / 1000);
-    await done(g.anim, FLY_OUT);
-    if (Math.abs(window.scrollY - Math.max(0, y)) > 2) jumpToY(y);
-    openRef.current = null;
-    flushSync(() => {
-      setOpen(null);
-      setPhase(null);
-      setSel(null);
-      setFx([]);
-    });
-    g.el.remove();
-    busy.current = false;
-    settle(focusTile());
-  }, []);
-
-  /** Zeiger auf einer Karte: großes Foto schon laden, damit es nach dem Flug sofort scharf dasteht */
+  /** große Fotos eines Teils sofort laden (statt erst beim Sichtbarwerden) */
   const peek = useCallback((slug: string) => {
     for (const s of [`#${slug} .stage__shot img`, `#${slug}-karte .pcard__shot img`]) {
       document.querySelectorAll<HTMLImageElement>(s).forEach((img) => (img.loading = 'eager'));
     }
   }, []);
+
+  const swap = useCallback(
+    async (next: string | null, mode: 'fly' | 'scroll' | 'jump' = 'fly') => {
+      const sec = section.current;
+      const det = detail.current;
+      if (!sec || !det || busy.current) return;
+      const prev = openRef.current;
+      if (next === prev) {
+        if (next && mode !== 'fly') scrollToEl(det, -HDR - GAP);
+        return;
+      }
+      const btnOf = (slug: string) => sec.querySelector<HTMLElement>(`.vcard__btn[data-slug="${slug}"]`);
+      const tileImg = (slug: string) => btnOf(slug)?.querySelector<HTMLImageElement>('.vcard__shot img') ?? null;
+      /** Handy: Karussell direkt auf die gewählte Karte stellen */
+      const snapCard = (slug: string) => {
+        const card = document.getElementById(`${slug}-karte`);
+        const track = card?.parentElement;
+        if (card && track && shown(card)) {
+          track.scrollLeft = card.offsetLeft - parseFloat(getComputedStyle(track).paddingLeft);
+          mobileIdx.current = PRODUCTS.findIndex((p) => p.slug === slug);
+        }
+      };
+      const topOf = (el: HTMLElement) => el.getBoundingClientRect().top + window.scrollY - HDR - GAP;
+      const settle = (focus: HTMLElement | null | undefined) => {
+        ScrollTrigger.refresh();
+        history.replaceState(null, '', openRef.current ? `#${openRef.current}` : location.pathname + location.search);
+        focus?.focus({ preventScroll: true });
+      };
+      const still = reducedRef.current || typeof Element.prototype.animate !== 'function';
+
+      // ---- Wechsel zwischen zwei geöffneten Teilen: weiches Überblenden ----
+      if (prev && next) {
+        peek(next);
+        const apply = () => {
+          openRef.current = next;
+          flushSync(() => setOpen(next));
+          snapCard(next);
+        };
+        const doc = document as VTDoc;
+        if (still || typeof doc.startViewTransition !== 'function') {
+          apply();
+          settle(null);
+        } else {
+          busy.current = true;
+          document.documentElement.classList.add('pl-vt');
+          const t = doc.startViewTransition(apply);
+          const guard = window.setTimeout(() => t.skipTransition?.(), 1500);
+          t.finished.finally(() => {
+            clearTimeout(guard);
+            document.documentElement.classList.remove('pl-vt');
+            busy.current = false;
+            settle(null);
+          });
+        }
+        if (mode === 'scroll') scrollToEl(det, -HDR - GAP);
+        return;
+      }
+
+      // ---- Öffnen ----
+      if (next) {
+        peek(next);
+        const img = tileImg(next);
+        const btn = btnOf(next);
+        const vit = sec.querySelector<HTMLElement>('.vitrine');
+        if (mode !== 'fly' || still || !img || !btn || !vit || !shown(img)) {
+          // ohne Flug (Direktlink, Anker von außen, „Bewegung reduzieren“)
+          openRef.current = next;
+          flushSync(() => setOpen(next));
+          snapCard(next);
+          if (mode === 'scroll') scrollToEl(det, -HDR - GAP);
+          else jumpToEl(det, -HDR - GAP);
+          settle(mode === 'fly' ? backBtn.current : null);
+          return;
+        }
+        busy.current = true;
+        clearTimeout(arriveT.current);
+        // 1. Licht aus, Seite ausrichten (Auslage und geöffnetes Teil beginnen an derselben Stelle)
+        flushSync(() => {
+          setPhase('picking');
+          setSel(next);
+        });
+        await Promise.all([align(topOf(vit)), wait(320)]);
+        // 2. Umschalten – die Seite steht jetzt still
+        const from = rectOf(img);
+        openRef.current = next;
+        flushSync(() => {
+          setOpen(next);
+          setPhase('leaving');
+          setFx(['fly-hide', 'is-arriving']);
+        });
+        snapCard(next);
+        const to = landing(next, btn);
+        if (!to) {
+          flushSync(() => {
+            setPhase(null);
+            setSel(null);
+            setFx([]);
+          });
+          busy.current = false;
+          settle(backBtn.current);
+          return;
+        }
+        const g = makeGhost(img.currentSrc || img.src, from);
+        const anim = fly(g, from, to, FLY_IN);
+        arriveT.current = window.setTimeout(() => setFx((f) => f.filter((c) => c !== 'is-arriving')), ARRIVE);
+        // Rahmen baut sich erst kurz vor der Landung um das ankommende Foto auf
+        await wait(FLY_IN * 0.68);
+        setFx((f) => ['fly-frame', ...f.filter((c) => c !== 'fly-hide')]);
+        await done(anim, FLY_IN);
+        // 3. Übergabe erst, wenn das große Foto geladen ist
+        await photoReady(next);
+        flushSync(() => {
+          setFx((f) => ['fly-land', ...f.filter((c) => c !== 'fly-frame')]);
+          setPhase(null);
+          setSel(null);
+        });
+        await wait(420); // großes Foto blendet unter dem fliegenden ein
+        await done(g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease', fill: 'forwards' }), 200);
+        g.remove();
+        // erst jetzt: Infopunkte, Schloss, Bildwechsel
+        setFx((f) => f.filter((c) => c !== 'fly-land'));
+        busy.current = false;
+        settle(backBtn.current);
+        return;
+      }
+
+      // ---- Zurück zur Auslage ----
+      const leaving =
+        prev && shown(sec.querySelector('.products__arsenal')) ? (PRODUCTS[mobileIdx.current]?.slug ?? prev) : prev!;
+      const btn = btnOf(leaving);
+      const img = tileImg(leaving);
+      const instant = () => {
+        openRef.current = null;
+        flushSync(() => {
+          setOpen(null);
+          setPhase(null);
+          setSel(null);
+          setFx([]);
+        });
+        jumpToEl(sec.querySelector<HTMLElement>('.vitrine') ?? sec, -HDR - GAP);
+        settle(btnOf(leaving));
+      };
+      clearTimeout(arriveT.current);
+      if (mode !== 'fly' || still || !btn || !img) return instant();
+      busy.current = true;
+      // 0. Seite so ausrichten, dass das Teil an derselben Stelle beginnt wie die Auslage
+      await align(topOf(det));
+      const B = landing(leaving, btn);
+      if (!B) {
+        busy.current = false;
+        return instant();
+      }
+      // 1. Foto übernimmt, Bühne und Kaufkarte blenden aus
+      const g = makeGhost(img.currentSrc || img.src, B);
+      flushSync(() => setFx(['fly-frame', 'fly-out']));
+      await wait(300);
+      // 2. Umschalten: Auslage liegt genau dort, wo das Teil war → Foto fliegt bei stehender Seite in seine Karte
+      openRef.current = null;
+      flushSync(() => {
+        setOpen(null);
+        setPhase('returning');
+        setSel(leaving);
+        setFx([]);
+      });
+      const A = rectOf(img);
+      await done(fly(g, B, A, FLY_OUT), FLY_OUT);
+      flushSync(() => {
+        setPhase(null);
+        setSel(null);
+      });
+      g.remove();
+      busy.current = false;
+      settle(btnOf(leaving));
+    },
+    [peek],
+  );
 
   // Anker von außen (Kopfzeile, Hero, Packliste): Teil öffnen und hinscrollen
   useEffect(() => {
@@ -362,6 +416,7 @@ export function Products() {
                   aria-pressed={open === p.slug}
                   aria-label={`${p.name} (${p.code})`}
                   onClick={() => swap(p.slug)}
+                  onPointerEnter={() => peek(p.slug)}
                 >
                   <span className="vbar__thumb">{shot ? <Picture k={shot} alt="" sizes="48px" /> : null}</span>
                   {p.code}

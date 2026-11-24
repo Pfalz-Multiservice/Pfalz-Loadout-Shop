@@ -64,8 +64,11 @@ export function Vitrine({
   onPeek,
 }: {
   hidden: boolean;
-  /** leaving = Karten blenden aus (Foto fliegt zur Bühne) · returning = Karten blenden ein (Foto fliegt zurück) */
-  phase: 'leaving' | 'returning' | null;
+  /**
+   * picking = Licht aus: nur das gewählte Teil bleibt stehen · leaving = Foto fliegt zur Bühne
+   * returning = Foto fliegt zurück, Karten blenden wieder ein
+   */
+  phase: 'picking' | 'leaving' | 'returning' | null;
   sel: string | null;
   onOpen: (slug: string) => void;
   onPeek: (slug: string) => void;
@@ -103,7 +106,7 @@ export function Vitrine({
       ref={root}
       className={`vitrine${phase ? ` is-${phase}` : ''}`}
       hidden={hidden}
-      aria-hidden={phase === 'leaving' || undefined}
+      aria-hidden={phase === 'leaving' || phase === 'picking' || undefined}
     >
       <ul className="vgrid">
         {PRODUCTS.map((p, i) => {
@@ -120,7 +123,7 @@ export function Vitrine({
                 data-slug={p.slug}
                 data-from={card?.look?.from}
                 data-lage={card?.look?.lage.join(',')}
-                tabIndex={phase === 'leaving' ? -1 : undefined}
+                tabIndex={phase ? -1 : undefined}
                 onClick={() => onOpen(p.slug)}
                 onPointerEnter={() => onPeek(p.slug)}
                 onFocus={() => onPeek(p.slug)}
