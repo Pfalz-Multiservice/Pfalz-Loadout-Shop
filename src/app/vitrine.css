@@ -1,66 +1,42 @@
 /* ==================================================================
-   Auslage: alle Teile nebeneinander auf einer Kante.
-   Zeiger auf ein Teil → nur dieses bleibt beleuchtet. Klick → nah heranfahren
-   (Foto wächst in die Produktbühne, Kaufkarte kommt dazu).
+   Auslage: vier gleich große Karten, jedes Teil auf derselben Standlinie.
+   Zeiger auf eine Karte → dieses Teil hebt sich, die anderen treten zurück.
+   Klick → das Foto fliegt in die Produktbühne (Products.tsx).
    ================================================================== */
 [hidden] {
   display: none !important;
 }
 
 .vitrine {
+  --media-h: clamp(250px, 38svh, 420px);
   position: relative;
-  margin-top: clamp(20px, 4vh, 40px);
-  padding: clamp(16px, 3vh, 28px) 0 clamp(24px, 5vh, 48px);
-  /* reines Weiß wie der Grund der Produktfotos → die Fotos stehen ohne sichtbare Kanten im Raum */
-  background: #ffffff;
-  border-block: 1px solid var(--line);
-  overflow: hidden;
-  --px: 0;
+  margin-top: clamp(28px, 5vh, 56px);
 }
-.vitrine__hint {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 clamp(8px, 2vh, 20px);
-  color: var(--bone-3);
-}
-.vitrine__pulse {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--signal);
-  animation: vpulse 1.8s ease-in-out infinite;
-}
-@keyframes vpulse {
-  50% {
-    opacity: 0.25;
-    transform: scale(0.7);
-  }
-}
-
-.vitrine__row {
-  /* --u = Breite des größten Teils; alle anderen sind über --f daran gekoppelt */
-  --u: min(24vw, 320px, 46svh);
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  margin: 0;
-  padding: 0 var(--gutter);
+.vgrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  width: min(100% - 2 * var(--gutter), var(--maxw) - 2 * var(--gutter));
+  margin: 0 auto;
+  padding: 0;
   list-style: none;
+  /* Haarlinien zwischen den Karten (wie ein Datenblatt) */
+  background: var(--line-2);
+  border: 1px solid var(--line-2);
 }
-.vitrine__row > li {
-  display: flex;
-  justify-content: center;
+/* Karten auf dem Papiergrund der Seite – die freigestellten Teile stehen frei im Raum */
+.vcard {
+  position: relative;
+  min-width: 0;
+  background: var(--basalt);
+  transition: background-color 0.5s ease;
 }
-
-.vitem {
+.vcard__btn {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
   border: 0;
@@ -71,233 +47,292 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.vitem__shot {
-  --w: calc(var(--u) * var(--f));
-  position: relative;
-  display: block;
-  width: var(--w);
-  aspect-ratio: 3 / 4;
-  /* Leerraum unter dem Produkt einziehen → Produkt steht auf der Kante (= Oberkante des Schilds) */
-  margin-bottom: calc(var(--w) * -1.3333 * var(--drop));
-  transform-origin: 50% calc(100% * (1 - var(--drop)));
-  transform: translate3d(calc(var(--px) * var(--f) * -12px), var(--ty, 0%), 0) scale(var(--sc, 1));
-  transition:
-    transform 0.7s var(--ease),
-    opacity 0.45s ease,
-    filter 0.45s ease;
-}
-.vitem__shot picture,
-.vitem__shot img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.vitem__shot picture {
-  background: transparent !important;
-}
-.vitem__shot img {
-  object-fit: contain;
-  /* Fotogrund ist 253–255 statt reinem Weiß → minimal anheben, damit keine Bildkante zu sehen ist */
-  filter: brightness(1.025);
-}
-
-/* Schild unter dem Teil (wie ein Preisschild an der Regalkante) */
-.vitem__label {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  padding: 14px clamp(10px, 1.3vw, 20px) 0;
-  border-top: 1px solid var(--line-2);
-  transition: opacity 0.45s ease;
-}
-/* oranges Zugband: fährt aus, sobald das Teil beleuchtet ist */
-.vitem__label::before {
+/* oranges Zugband oben: fährt beim Zeigen aus (Markenzeichen) */
+.vcard__btn::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: -2px;
-  width: 100%;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  z-index: 2;
   height: 3px;
   background: var(--signal);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 0.5s var(--ease);
+  transition: transform 0.55s var(--ease);
 }
-.vitem__code {
-  color: var(--bone-3);
-  font-size: 0.66rem;
-  white-space: nowrap;
-}
-.vitem__name {
-  font-size: clamp(1.25rem, 1.9vw, 1.7rem);
-  line-height: 1.05;
-  white-space: nowrap;
-}
-.vitem__meta {
+.vcard__top {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-  color: var(--bone-2);
-  font-size: 0.74rem;
-  white-space: nowrap;
-}
-.vitem__dots {
-  display: inline-flex;
-  gap: 3px;
-}
-.vitem__dots i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(20, 20, 20, 0.18);
-}
-.vitem__go {
-  display: none;
-  margin-top: 6px;
-  color: var(--signal-ink);
+  justify-content: space-between;
+  padding: 18px 22px 0;
+  color: var(--bone-3);
   font-size: 0.7rem;
-  white-space: nowrap;
+  letter-spacing: 0.06em;
+  transition: color 0.3s;
 }
 
-/* Beleuchtung: nur das Teil unter dem Zeiger (oder mit Tastaturfokus) bleibt hell */
+/* Bildfläche: Produkt steht unten auf der Standlinie */
+.vcard__media {
+  position: relative;
+  display: block;
+  height: var(--media-h);
+  overflow: hidden;
+  container-type: size;
+}
+.vcard__shot {
+  position: absolute;
+  inset: 0;
+  background: transparent !important;
+  transform-origin: 50% 100%;
+  transition:
+    transform 0.8s var(--ease),
+    opacity 0.45s ease;
+}
+/* genaue Platzierung aus der Messung: Produkthöhe --ph, Standlinie 8 % über dem unteren Rand */
+.vcard__media.is-placed .vcard__shot {
+  --ph: min(calc(var(--mh) * 86cqh), calc(var(--mw) * 100cqw / var(--pa)));
+  --ih: calc(var(--ph) / var(--ch));
+  inset: auto;
+  bottom: calc(8cqh - var(--bt) * var(--ih));
+  left: calc(50cqw - var(--cx) * var(--ih) * var(--ar));
+  width: calc(var(--ih) * var(--ar));
+  height: var(--ih);
+  transform-origin: 50% calc(100% - var(--bt) * 100%);
+}
+.vcard__shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.vcard__info {
+  display: grid;
+  gap: 6px;
+  padding: 18px 22px 22px;
+  border-top: 1px solid var(--line);
+  transition: opacity 0.4s ease;
+}
+.vcard__cat {
+  overflow: hidden;
+  color: var(--bone-3);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vcard__name {
+  font-size: clamp(1.5rem, 2.1vw, 2.15rem);
+  line-height: 0.95;
+}
+.vcard__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+.vcard__dots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.vcard__dots i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(20, 20, 20, 0.16);
+}
+.vcard__price {
+  font-family: var(--f-wide);
+  font-variation-settings: 'wdth' 125;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.vcard__price small {
+  font-family: var(--f-mono);
+  font-weight: 400;
+  font-size: 0.68rem;
+  color: var(--bone-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.vcard__go {
+  position: absolute;
+  right: 22px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--signal-ink);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.5s var(--ease);
+}
+.vcard__go i {
+  font-style: normal;
+  transition: transform 0.4s var(--ease);
+}
+
+/* Zeigen (Maus) bzw. Tastaturfokus: ein Teil im Licht, die anderen treten zurück */
 @media (hover: hover) {
-  .vitem__go {
-    display: block;
-    opacity: 0;
-    transform: translateX(-8px);
-    transition:
-      opacity 0.3s ease,
-      transform 0.45s var(--ease);
+  .vcard:hover {
+    background: #fbfaf7;
   }
-  .vitrine__row:has(.vitem:hover) .vitem:not(:hover) .vitem__shot {
-    opacity: 0.2;
-    filter: grayscale(1);
-  }
-  .vitrine__row:has(.vitem:hover) .vitem:not(:hover) .vitem__label {
-    opacity: 0.45;
-  }
-  .vitem:hover .vitem__shot {
-    --ty: -1.2%;
-    --sc: 1.05;
-  }
-  .vitem:hover .vitem__label::before {
+  .vcard__btn:hover::before {
     transform: scaleX(1);
   }
-  .vitem:hover .vitem__code {
+  .vcard__btn:hover .vcard__top {
     color: var(--signal-ink);
   }
-  .vitem:hover .vitem__go {
+  .vcard__btn:hover .vcard__shot {
+    transform: translate3d(0, -2.5%, 0) scale(1.04);
+  }
+  .vcard__btn:hover .vcard__go {
     opacity: 1;
     transform: none;
   }
+  .vcard__btn:hover .vcard__go i {
+    transform: translateX(3px);
+  }
+  .vgrid:has(.vcard__btn:hover) .vcard__btn:not(:hover) .vcard__shot {
+    opacity: 0.28;
+  }
+  .vgrid:has(.vcard__btn:hover) .vcard__btn:not(:hover) .vcard__info {
+    opacity: 0.55;
+  }
 }
-.vitrine__row:has(.vitem:focus-visible) .vitem:not(:focus-visible) .vitem__shot {
-  opacity: 0.2;
-  filter: grayscale(1);
+.vcard__top span {
+  transition: opacity 0.25s ease;
 }
-.vitem:focus-visible {
-  outline: none;
-}
-.vitem:focus-visible .vitem__shot {
-  --ty: -1.2%;
-  --sc: 1.05;
-}
-.vitem:focus-visible .vitem__label {
+.vcard__btn:focus-visible {
   outline: 2px solid var(--signal);
-  outline-offset: 3px;
+  outline-offset: -2px;
 }
-.vitem:focus-visible .vitem__label::before {
+.vcard__btn:focus-visible::before {
   transform: scaleX(1);
 }
-.vitem:active .vitem__shot {
-  --sc: 0.97;
+.vcard__btn:active .vcard__shot {
+  transform: scale(0.98);
   transition-duration: 0.15s;
 }
 
-/* Auftritt: Teile stellen sich nacheinander auf (Klassen setzt Vitrine.tsx, danach werden sie wieder entfernt) */
-.vitrine.is-armed:not(.is-in) .vitem__shot,
-.vitrine.is-armed:not(.is-in) .vitem__label {
+/* Auftritt: Teile stellen sich nacheinander auf (Klassen setzt Vitrine.tsx, danach wieder entfernt) */
+.vitrine.is-armed:not(.is-in) .vcard__shot,
+.vitrine.is-armed:not(.is-in) .vcard__info {
   opacity: 0;
 }
-.vitrine.is-armed.is-in .vitem__shot {
-  animation: vrise 0.9s var(--ease) backwards;
-  animation-delay: calc(var(--i) * 110ms);
+.vitrine.is-armed.is-in .vcard__shot {
+  animation: vrise 1s var(--ease) backwards;
+  animation-delay: calc(var(--i) * 90ms + 80ms);
 }
-.vitrine.is-armed.is-in .vitem__label {
-  animation: vfade 0.6s ease backwards;
-  animation-delay: calc(var(--i) * 110ms + 250ms);
+.vitrine.is-armed.is-in .vcard__info {
+  animation: vfade 0.7s ease backwards;
+  animation-delay: calc(var(--i) * 90ms + 300ms);
 }
 @keyframes vrise {
   from {
     opacity: 0;
-    transform: translate3d(0, 9%, 0) scale(0.96);
+    transform: translate3d(0, 7%, 0);
   }
 }
 @keyframes vfade {
   from {
     opacity: 0;
+    transform: translate3d(0, 8px, 0);
   }
 }
 
-/* Handy: zwei oben, zwei unten – jede Reihe auf ihrer eigenen Kante */
-@media (max-width: 700px) {
-  .vitrine__row {
-    --u: min(40vw, 210px);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: end;
-    row-gap: 22px;
-    padding-inline: 0;
-  }
-  .vitem {
-    width: 100%;
-  }
-  .vitem__label {
-    padding-inline: var(--gutter);
-  }
-  .vitem__name {
-    font-size: 1.3rem;
-  }
-  .vitem__label {
-    padding-top: 10px;
-  }
+/* Tablet und Handy: 2 × 2 */
+@media (max-width: 900px) {
   .vitrine {
-    padding-bottom: 28px;
+    --media-h: clamp(170px, 42vw, 300px);
+  }
+  .vgrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .vcard__top {
+    padding: 12px 14px 0;
+    font-size: 0.62rem;
+  }
+  .vcard__info {
+    gap: 4px;
+    padding: 12px 14px 14px;
+  }
+  .vcard__cat {
+    display: none;
+  }
+  .vcard__name {
+    display: flex;
+    align-items: flex-end;
+    min-height: 2em;
+    font-size: 1.22rem;
+    line-height: 1;
+  }
+  .vcard__row {
+    margin-top: 4px;
+  }
+  .vcard__dots {
+    gap: 3px;
+  }
+  .vcard__dots i {
+    width: 8px;
+    height: 8px;
+  }
+  .vcard__price {
+    font-size: 0.78rem;
+  }
+  .vcard__go {
+    display: none;
   }
 }
 
 /* ------------------------------------------------------------------
    Geöffnetes Teil: Leiste mit „Zur Auslage“ und Schnellwechsel
    ------------------------------------------------------------------ */
+/* Abstand zur Überschrift: Beim geöffneten Teil sitzt nichts von „Keine Kompromisse“ hinter der Menüleiste */
+.products__detail {
+  margin-top: 72px;
+}
 .vbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: clamp(16px, 3vh, 32px);
-  padding-block: 12px;
+  padding-block: 0 12px;
 }
 .vbar__back {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  padding: 0 16px;
+  padding: 0 18px;
   border: 1px solid var(--line-2);
   background: var(--basalt-2);
   color: var(--bone);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    color 0.2s;
 }
 .vbar__back span {
   transition: transform 0.3s var(--ease);
 }
 .vbar__back:hover {
   border-color: var(--bone);
+  background: var(--bone);
+  color: var(--basalt-2);
 }
 .vbar__back:hover span {
   transform: translateX(-4px);
@@ -309,37 +344,51 @@
 }
 .vbar__tabs {
   display: flex;
-  gap: 4px;
+  gap: 1px;
+  background: var(--line-2);
+  border: 1px solid var(--line-2);
 }
 .vbar__tab {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  padding: 3px 12px 3px 4px;
+  padding: 4px 14px 4px 6px;
   border: 0;
-  border-bottom: 2px solid var(--line-2);
-  background: none;
+  background: var(--basalt-2);
   color: var(--bone-3);
   font-size: 0.66rem;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  transition:
-    color 0.2s,
-    border-color 0.2s;
+  transition: color 0.2s;
+}
+.vbar__tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--signal);
+  transform: scaleX(0);
+  transition: transform 0.4s var(--ease);
 }
 .vbar__tab:hover {
   color: var(--bone);
 }
 .vbar__tab[aria-pressed='true'] {
-  border-bottom-color: var(--signal);
   color: var(--bone);
+}
+.vbar__tab[aria-pressed='true']::after {
+  transform: scaleX(1);
 }
 .vbar__thumb {
   position: relative;
   width: 34px;
   height: 34px;
   overflow: hidden;
-  opacity: 0.55;
+  opacity: 0.5;
   transition: opacity 0.2s;
 }
 .vbar__tab:hover .vbar__thumb,
@@ -355,150 +404,133 @@
 }
 .vbar__thumb img {
   object-fit: contain;
+  filter: brightness(1.025);
 }
 @media (max-width: 960px) {
   .vbar__tabs {
     display: none;
   }
-  .vbar {
-    margin-top: 12px;
-    padding-block: 8px 0;
+  .products__detail {
+    margin-top: 68px;
   }
 }
 
 /* ------------------------------------------------------------------
-   Kamerafahrt: Beim Klick liegt die Auslage als Ebene über der Produktbühne
-   (.is-flying) und fährt auf das gewählte Teil zu (Transform der Reihe, siehe
-   Products.tsx). .is-zoomed = Licht aus: andere Teile, Schilder und weißer
-   Grund sind ausgeblendet. Am Ende übernimmt das scharfe Foto der Bühne.
+   Flug: Beim Öffnen fliegt nur das Produktfoto (eigene Ebene .pl-ghost, Products.tsx)
+   von der Karte in die Bühne. Die Karten blenden aus, der Rahmen baut sich um das
+   ankommende Foto auf, die Kaufkarte kommt Zeile für Zeile. Zurück genauso rückwärts.
+   Ohne Bewegung (reduced motion): sofortiger Wechsel.
    ------------------------------------------------------------------ */
 .products {
   position: relative;
-  /* die herangezoomte Auslage ragt seitlich über den Bildschirm → kein Quer-Scrollen */
   overflow-x: clip;
 }
-.vitrine.is-flying {
+.pl-ghost {
+  position: fixed;
+  z-index: 30;
+  margin: 0;
+  pointer-events: none;
+  object-fit: contain;
+  transform-origin: 0 0;
+  will-change: transform, opacity;
+}
+
+/* Öffnen: Auslage liegt als Ebene an ihrem Platz und blendet aus */
+.vitrine.is-leaving {
   position: absolute;
   left: 0;
   right: 0;
   z-index: 6;
-  overflow: visible;
   pointer-events: none;
-  transition:
-    background-color 0.45s ease 0.3s,
-    border-color 0.45s ease 0.3s;
-}
-.vitrine.is-flying .vitrine__row {
-  transform-origin: 0 0;
-  will-change: transform;
-}
-.vitrine.is-flying .vitem__shot {
-  transform: none;
-  filter: none;
-  opacity: 1;
-  animation: none;
-  transition: opacity 0.6s ease 0.3s;
-}
-.vitrine.is-flying .vitem__label,
-.vitrine.is-flying .vitrine__hint {
-  animation: none;
-  transition: opacity 0.5s ease 0.45s;
-}
-.vitrine.is-zoomed {
-  background-color: transparent;
-  border-color: transparent;
-  transition:
-    background-color 0.4s ease 0.2s,
-    border-color 0.4s ease 0.2s;
-}
-.vitrine.is-zoomed li:not(.is-sel) .vitem__shot {
   opacity: 0;
+  transition: opacity 0.38s ease;
+}
+.vitrine .vcard.is-sel .vcard__shot {
+  visibility: hidden;
+}
+/* Zurück: Karten kommen wieder, das gewählte Foto landet in seiner Karte */
+.vitrine.is-returning .vcard__btn {
+  pointer-events: none;
+}
+/* nur Deckkraft, keine Bewegung: das zurückfliegende Foto zielt auf die exakte Kartenposition */
+.vitrine.is-returning .vcard__info,
+.vitrine.is-returning .vcard__top,
+.vitrine.is-returning .vcard:not(.is-sel) .vcard__shot {
+  animation: vin 0.55s ease backwards;
+  animation-delay: calc(0.3s + var(--i) * 0.06s);
+}
+@keyframes vin {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Bühne: unsichtbar, solange das Foto fliegt; der Rahmen baut sich kurz vor der Landung auf */
+.products.fly-hide .stage__visual,
+.products.fly-hide .pcard__media {
+  opacity: 0;
+}
+.products.fly-frame .stage__visual,
+.products.fly-frame .pcard__media {
+  opacity: 1;
   transition: opacity 0.35s ease;
 }
-.vitrine.is-zoomed .vitem__label,
-.vitrine.is-zoomed .vitrine__hint {
-  opacity: 0;
-  transition: opacity 0.25s ease;
+/* Infopunkte, Schloss, Pfeile und das Foto selbst erst nach der Landung (das fliegende Foto deckt es ab) */
+.products.fly-frame .stage__visual > :not(.stage__frame),
+.products.fly-frame .pcard__media > :not(.pcard__shot),
+.products.fly-frame .stage__frame picture,
+.products.fly-frame .pcard__shot picture {
+  /* !important: die Bühnenfotos tragen ihre Deckkraft inline */
+  opacity: 0 !important;
 }
-
-/* Ankunft: Bühne wartet unsichtbar, bis die Kamera da ist; die Kaufkarte kommt auf halbem Weg Zeile für Zeile */
-.products.is-arriving .stage__frame,
-.products.is-arriving .pcard__media {
-  animation: plland 0.32s ease backwards;
-  animation-delay: 1.06s;
+.stage__visual > :not(.stage__frame),
+.pcard__media > :not(.pcard__shot) {
+  transition: opacity 0.45s ease;
 }
-.products.is-arriving .stage__visual > :not(.stage__frame),
-.products.is-arriving .stage__visual.hud::before,
-.products.is-arriving .stage__visual.hud::after {
-  animation: plland 0.4s ease backwards;
-  animation-delay: 1.25s;
-}
-.products.is-arriving .vbar,
-.products.is-arriving .arsenal__nav {
-  animation: plland 0.5s ease backwards;
-  animation-delay: 0.6s;
-}
-.products.is-arriving .stage,
-.products.is-arriving .pcard {
-  animation: plland 0.4s ease backwards;
-  animation-delay: 0.3s;
-}
-.products.is-arriving .sheet > *,
-.products.is-arriving .pcard__body > * {
-  animation: plline 0.6s var(--ease) backwards;
-  animation-delay: calc(0.45s + var(--n, 0) * 0.06s);
-}
-.products.is-arriving .sheet > :nth-child(2),
-.products.is-arriving .pcard__body > :nth-child(2) {
-  --n: 1;
-}
-.products.is-arriving .sheet > :nth-child(3),
-.products.is-arriving .pcard__body > :nth-child(3) {
-  --n: 2;
-}
-.products.is-arriving .sheet > :nth-child(4),
-.products.is-arriving .pcard__body > :nth-child(4) {
-  --n: 3;
-}
-.products.is-arriving .sheet > :nth-child(5),
-.products.is-arriving .pcard__body > :nth-child(5) {
-  --n: 4;
-}
-.products.is-arriving .sheet > :nth-child(6),
-.products.is-arriving .pcard__body > :nth-child(6) {
-  --n: 5;
-}
-.products.is-arriving .sheet > :nth-child(7),
-.products.is-arriving .pcard__body > :nth-child(7) {
-  --n: 6;
-}
-.products.is-arriving .sheet > :nth-child(8) {
-  --n: 7;
-}
-.products.is-arriving .sheet > :nth-child(n + 9) {
-  --n: 8;
-}
-@keyframes plland {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes plline {
-  from {
-    opacity: 0;
-    transform: translateX(26px);
-  }
-}
-
-/* Rückfahrt: Bühne blendet aus, das Kachelfoto der Auslage übernimmt sofort den Platz des großen Fotos */
-.products.is-leaving .products__detail {
+/* Zurück: Bühne und Kaufkarte blenden schnell aus */
+.products.fly-out .products__detail {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
 }
-.products.is-leaving .stage__frame,
-.products.is-leaving .pcard__media {
-  visibility: hidden;
+
+/* Kaufkarte: Zeilen laufen nacheinander ein */
+.products.is-arriving .vbar,
+.products.is-arriving .arsenal__nav {
+  animation: vfade 0.6s ease backwards;
+  animation-delay: 0.5s;
+}
+.products.is-arriving .sheet > *,
+.products.is-arriving .pcard__body > * {
+  animation: plline 0.7s var(--ease) backwards;
+  animation-delay: calc(0.32s + var(--n, 0) * 0.055s);
+}
+.products.is-arriving :is(.sheet, .pcard__body) > :nth-child(2) {
+  --n: 1;
+}
+.products.is-arriving :is(.sheet, .pcard__body) > :nth-child(3) {
+  --n: 2;
+}
+.products.is-arriving :is(.sheet, .pcard__body) > :nth-child(4) {
+  --n: 3;
+}
+.products.is-arriving :is(.sheet, .pcard__body) > :nth-child(5) {
+  --n: 4;
+}
+.products.is-arriving :is(.sheet, .pcard__body) > :nth-child(6) {
+  --n: 5;
+}
+.products.is-arriving :is(.sheet, .pcard__body) > :nth-child(7) {
+  --n: 6;
+}
+.products.is-arriving :is(.sheet, .pcard__body) > :nth-child(n + 8) {
+  --n: 7;
+}
+@keyframes plline {
+  from {
+    opacity: 0;
+    transform: translate3d(28px, 0, 0);
+  }
 }
 
 /* Wechsel zwischen zwei geöffneten Teilen: weiches Überblenden (View Transition) */
@@ -509,4 +541,13 @@ html.pl-vt::view-transition-new(root) {
 html.pl-vt .stage__shot,
 html.pl-vt .pcard__shot {
   animation-duration: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vcard__shot,
+  .vcard__info,
+  .vcard__btn::before,
+  .vcard__go {
+    transition: none;
+  }
 }

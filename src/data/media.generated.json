@@ -930,6 +930,44 @@
   "cut": false,
   "tr": 0.161
  },
+ "av-rb-schwarz-front": {
+  "w": 1697,
+  "h": 1480,
+  "widths": [
+   360,
+   720,
+   1080
+  ],
+  "v": "665b7402",
+  "bg": "transparent",
+  "cut": true,
+  "tr": 0.27
+ },
+ "av-dp-schwarz-front": {
+  "w": 709,
+  "h": 884,
+  "widths": [
+   360,
+   709
+  ],
+  "v": "1617d619",
+  "bg": "transparent",
+  "cut": true,
+  "tr": 0.08
+ },
+ "av-med-schwarz-front": {
+  "w": 1159,
+  "h": 1750,
+  "widths": [
+   360,
+   720,
+   1080
+  ],
+  "v": "f71672e8",
+  "bg": "transparent",
+  "cut": true,
+  "tr": 0.192
+ },
  "zs-schwarz": {
   "w": 398,
   "h": 747,

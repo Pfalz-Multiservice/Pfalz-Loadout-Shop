@@ -46,6 +46,12 @@ export function scrollToY(y: number, seconds?: number) {
   if (lenisRef) lenisRef.scrollTo(top, seconds ? { duration: seconds, easing: inOut, force: true } : {});
   else window.scrollTo({ top, behavior: 'smooth' });
 }
+/** Ohne Animation zu einer Seitenposition springen */
+export function jumpToY(y: number) {
+  const top = Math.max(0, y);
+  if (lenisRef) lenisRef.scrollTo(top, { immediate: true, force: true });
+  else window.scrollTo({ top, behavior: 'instant' });
+}
 /** Ohne Animation zu einem Element springen (z. B. innerhalb eines Ansichtswechsels) */
 export function jumpToEl(el: HTMLElement, offset = -64) {
   const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY + offset);

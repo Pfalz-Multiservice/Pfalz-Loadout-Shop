@@ -123,6 +123,11 @@ const MANIFEST = [
   // Header-Logo: Rahmen (Schrift, Ringe, Fadenkreuz) mit transparentem Zielfernrohr – erzeugt von scripts/logo-rahmen.py
   { key: 'logo-rahmen', src: 'logo/logo-rahmen.png', sizes: [200, 400, 652], hq: true, alpha: true },
 
+  // ---------- Auslage: freigestellte Ansicht je Teil (NUR Hintergrund weg, Pixel unverändert) → scripts/auslage-freistellen.py ----------
+  { key: 'av-rb-schwarz-front', src: `${RB}/freisteller/schwarz/Produktversch*ffbd*.jpg`, sizes: [360, 720, 1080], alpha: true, q: 88 },
+  { key: 'av-dp-schwarz-front', src: `${DP}/freisteller/schwarz/01-front.png`, sizes: [360, 720, 1080], alpha: true, q: 88 },
+  { key: 'av-med-schwarz-front', src: `${MED}/freisteller/schwarz/IFAK_SW_001 (2).jpg`, sizes: [360, 720, 1080], alpha: true, q: 88 },
+
   // ---------- Zubehör: Zahlenschloss (freigestellt, Alpha; je Farbe eine Datei zubehoer/zahlenschloss/<farbe>.png) ----------
   // Original-Produktfotos (weißer Grund) → vorher: python -I scripts/schloss-freistellen.py (legt freigestellt/zs-<farbe>.png an)
   ...['schwarz', 'pink', 'gruen', 'orange', 'gelb', 'blau'].map((f) => ({ key: `zs-${f}`, src: `zubehoer/zahlenschloss/${f}.*`, sizes: [160, 320, 480], hq: true, alpha: true })),
@@ -148,6 +153,7 @@ const CUT_KEYS = new Set([
   'zs-schwarz', 'zs-pink', 'zs-gruen', 'zs-orange', 'zs-gelb', 'zs-blau',
   'zs-pink-glow', 'zs-gruen-glow', 'zs-orange-glow', 'zs-gelb-glow', 'zs-blau-glow',
   'zb-patch', 'zb-patch-glow', 'zb-qd',
+  'av-rb-schwarz-front', 'av-dp-schwarz-front', 'av-med-schwarz-front',
 ]);
 const CUT_DIR = path.join(SRC, 'freigestellt');
 
@@ -166,7 +172,8 @@ async function resolveSrc(pattern) {
 async function run() {
   if (process.argv.includes('--freisteller-liste')) {
     const liste = [];
-    for (const item of MANIFEST.filter((m) => CUT_KEYS.has(m.key))) {
+    const nur = process.argv[process.argv.indexOf('--freisteller-liste') + 1] ?? '';
+    for (const item of MANIFEST.filter((m) => CUT_KEYS.has(m.key) && m.key.includes(nur))) {
       liste.push({ key: item.key, src: (await resolveSrc(item.src)).split(path.sep).join('/') });
     }
     process.stdout.write(JSON.stringify(liste, null, 1));

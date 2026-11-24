@@ -2,19 +2,22 @@
 
 import { useEffect, useRef } from 'react';
 import { COLORS, COLOR_NO, PRODUCTS, formatEuro, minPrice, type ColorKey, type Product } from '@/data/shop';
-import { Picture, hasMedia } from '../Picture';
+import { Picture, hasMedia, mediaMeta } from '../Picture';
 import { useMotion } from '../MotionProvider';
 
 /**
- * Darstellung je Produkt in der Auslage:
- * f    = Breite des Bildrahmens (3:4) relativ zum größten Teil → die Teile stehen im echten Größenverhältnis
- * drop = Leerraum unter dem Produkt im Rahmen (Anteil der Rahmenhöhe) → alle Teile stehen auf derselben Kante
+ * Wie jedes Teil in seiner Karte steht – freigestellte Ansicht (scripts/auslage-freistellen.py, nur Hintergrund weg).
+ * key  = freigestelltes Bild für die Karte · from = Original-Bühnenfoto, auf dem es beim Öffnen landet
+ * lage = wo der Ausschnitt im Originalfoto liegt (Anteile l, t, r, b; Ausgabe des Skripts)
+ * crop = wo das Produkt im freigestellten Bild liegt (Anteile, gemessen)
+ * h / w = größte Höhe bzw. Breite des Produkts als Anteil der Bildfläche → optisch ausgewogene Größen
  */
-const LOOK: Record<string, { f: number; drop: number }> = {
-  PL_KWT: { f: 0.98, drop: 0.241 },
-  PL_AP: { f: 1, drop: 0.129 },
-  PL_IFAK: { f: 0.76, drop: 0.1925 },
-  PL_GR: { f: 0.6, drop: 0.13 },
+type Look = { key: string; from: string; lage: [number, number, number, number]; crop: [number, number, number, number]; h: number; w: number };
+const LOOK: Record<string, Look> = {
+  PL_KWT: { key: 'av-rb-schwarz-front', from: 'rb-schwarz-front', lage: [0.08545, 0.14062, 0.91406, 0.86328], crop: [0.0194, 0.0223, 0.9806, 0.9777], h: 0.74, w: 0.88 },
+  PL_AP: { key: 'av-dp-schwarz-front', from: 'dp-schwarz-front', lage: [0.10417, 0.14105, 0.92477, 0.88767], crop: [0.024, 0.0192, 0.976, 0.9796], h: 0.92, w: 0.84 },
+  PL_IFAK: { key: 'av-med-schwarz-front', from: 'med-schwarz-front', lage: [0.21631, 0.0752, 0.78223, 0.92969], crop: [0.0287, 0.0196, 0.9713, 0.9804], h: 0.78, w: 0.74 },
+  PL_GR: { key: 'sl-schwarz-stand', from: 'sl-schwarz-stand', lage: [0, 0, 1, 1], crop: [0.12, 0.16, 0.88, 0.86], h: 0.72, w: 0.74 },
 };
 
 /** Farben in Code-Reihenfolge und das erste Foto der ersten lieferbaren Farbe (= Startbild der Produktbühne) */
@@ -25,23 +28,44 @@ export function firstLook(p: Product) {
   return { colors, color, shot: (p.stage[color] ?? []).find(hasMedia) };
 }
 
+/** Bild der Karte: freigestellt, wenn es zum Startbild der Bühne passt; sonst das Startbild selbst */
+function cardShot(code: string, shot: string | undefined) {
+  const look = LOOK[code];
+  if (look && look.from === shot && hasMedia(look.key)) return { k: look.key, look };
+  return shot ? { k: shot, look: undefined } : undefined;
+}
+
+/** CSS-Variablen, mit denen das Foto so groß und so platziert wird, dass das Produkt genau auf der Standlinie steht */
+function placement(look: Look) {
+  const meta = mediaMeta(look.key);
+  const ar = meta.w / meta.h;
+  const [l, t, r, b] = look.crop;
+  return {
+    '--ar': ar,
+    '--ch': b - t,
+    '--pa': ((r - l) * ar) / (b - t),
+    '--bt': 1 - b,
+    '--cx': (l + r) / 2,
+    '--mh': look.h,
+    '--mw': look.w,
+  } as React.CSSProperties;
+}
+
 /**
- * Die Auslage: alle Teile stehen nebeneinander auf einer Kante.
- * Zeiger auf ein Teil → nur dieses bleibt „beleuchtet“, die anderen treten zurück.
- * Klick → Products.tsx fährt wie eine Kamera auf das Teil zu: Die Auslage liegt dann als Ebene über der
- * Produktbühne (flying), die anderen Teile und die Schilder sind ausgeblendet (zoomed).
+ * Die Auslage: vier gleich große Karten, jedes Teil auf derselben Standlinie.
+ * Zeiger auf eine Karte → dieses Teil hebt sich, die anderen treten zurück.
+ * Klick → Products.tsx lässt das Foto in die Produktbühne fliegen (die Karten blenden dabei aus).
  */
 export function Vitrine({
   hidden,
-  flying,
-  zoomed,
+  phase,
   sel,
   onOpen,
   onPeek,
 }: {
   hidden: boolean;
-  flying: boolean;
-  zoomed: boolean;
+  /** leaving = Karten blenden aus (Foto fliegt zur Bühne) · returning = Karten blenden ein (Foto fliegt zurück) */
+  phase: 'leaving' | 'returning' | null;
   sel: string | null;
   onOpen: (slug: string) => void;
   onPeek: (slug: string) => void;
@@ -59,14 +83,12 @@ export function Vitrine({
     let done = 0;
     const io = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting) {
-          el.classList.add('is-in');
-          io.disconnect();
-          // danach aufräumen: beim späteren Zurückfahren zur Auslage soll der Auftritt nicht noch einmal laufen
-          done = window.setTimeout(() => el.classList.remove('is-armed', 'is-in'), 1800);
-        }
+        if (!e.isIntersecting) return;
+        el.classList.add('is-in');
+        io.disconnect();
+        done = window.setTimeout(() => el.classList.remove('is-armed', 'is-in'), 1600);
       },
-      { threshold: 0.25 },
+      { threshold: 0.3 },
     );
     io.observe(el);
     return () => {
@@ -76,81 +98,59 @@ export function Vitrine({
     };
   }, [ready, reduced]);
 
-  // Leichte Kamerabewegung mit dem Zeiger (nur Maus): Teile verschieben sich je nach Größe unterschiedlich weit
-  useEffect(() => {
-    const el = root.current;
-    if (!el || !ready || reduced || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-    let raf = 0;
-    const move = (e: PointerEvent) => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const r = el.getBoundingClientRect();
-        el.style.setProperty('--px', (((e.clientX - r.left) / r.width - 0.5) * 2).toFixed(3));
-      });
-    };
-    const leave = () => {
-      cancelAnimationFrame(raf);
-      el.style.setProperty('--px', '0');
-    };
-    el.addEventListener('pointermove', move);
-    el.addEventListener('pointerleave', leave);
-    return () => {
-      cancelAnimationFrame(raf);
-      el.removeEventListener('pointermove', move);
-      el.removeEventListener('pointerleave', leave);
-    };
-  }, [ready, reduced]);
-
   return (
     <div
       ref={root}
-      className={`vitrine${flying ? ' is-flying' : ''}${zoomed ? ' is-zoomed' : ''}`}
+      className={`vitrine${phase ? ` is-${phase}` : ''}`}
       hidden={hidden}
-      aria-hidden={flying || undefined}
+      aria-hidden={phase === 'leaving' || undefined}
     >
-      <p className="vitrine__hint mono">
-        <span aria-hidden="true" className="vitrine__pulse" />
-        Teil wählen – näher rangehen
-      </p>
-      <ul className="vitrine__row">
+      <ul className="vgrid">
         {PRODUCTS.map((p, i) => {
-          const look = LOOK[p.code] ?? { f: 0.8, drop: 0.15 };
           const { colors, shot } = firstLook(p);
           const from = minPrice(p);
           const many = p.variants.some((v) => v.priceCents !== from);
+          const card = cardShot(p.code, shot);
+          const place = card?.look ? placement(card.look) : undefined;
           return (
-            <li key={p.code} className={sel === p.slug ? 'is-sel' : undefined} style={{ ['--f' as string]: look.f, ['--drop' as string]: look.drop, ['--i' as string]: i }}>
+            <li key={p.code} className={`vcard${sel === p.slug ? ' is-sel' : ''}`} style={{ ['--i' as string]: i }}>
               <button
                 type="button"
-                className="vitem"
+                className="vcard__btn"
                 data-slug={p.slug}
-                tabIndex={flying ? -1 : undefined}
+                data-from={card?.look?.from}
+                data-lage={card?.look?.lage.join(',')}
+                tabIndex={phase === 'leaving' ? -1 : undefined}
                 onClick={() => onOpen(p.slug)}
                 onPointerEnter={() => onPeek(p.slug)}
                 onFocus={() => onPeek(p.slug)}
+                aria-label={`${p.name} ansehen – ${many ? 'ab ' : ''}${formatEuro(from)}, ${colors.length} ${colors.length === 1 ? 'Farbe' : 'Farben'}`}
               >
-                <span className="vitem__shot">
-                  {shot ? <Picture k={shot} alt="" sizes="(max-width: 700px) 60vw, 40vw" /> : null}
+                <span className="vcard__top mono" aria-hidden="true">
+                  <span>{String(i + 1).padStart(2, '0')}</span>
+                  <span>{p.code}</span>
                 </span>
-                <span className="vitem__label">
-                  <span className="vitem__code mono">
-                    {String(i + 1).padStart(2, '0')} · {p.code}
+                <span className={`vcard__media${place ? ' is-placed' : ''}`} aria-hidden="true">
+                  {card ? (
+                    <Picture k={card.k} alt="" sizes="(max-width: 900px) 50vw, 30vw" className="vcard__shot" style={place} />
+                  ) : null}
+                  <span className="vcard__go mono">
+                    Ansehen <i>→</i>
                   </span>
-                  <span className="vitem__name display">{p.name}</span>
-                  <span className="vitem__meta mono">
-                    <span className="vitem__dots" aria-hidden="true">
+                </span>
+                <span className="vcard__info" aria-hidden="true">
+                  <span className="vcard__cat mono">{p.category}</span>
+                  <span className="vcard__name display">{p.name}</span>
+                  <span className="vcard__row">
+                    <span className="vcard__dots">
                       {colors.map((c) => (
                         <i key={c} style={{ background: COLORS[c].swatch }} />
                       ))}
                     </span>
-                    <span className="sr-only">
-                      {colors.length} {colors.length === 1 ? 'Farbe' : 'Farben'},{' '}
+                    <span className="vcard__price">
+                      {many && <small>ab </small>}
+                      {formatEuro(from)}
                     </span>
-                    {many ? 'ab ' : ''}
-                    {formatEuro(from)}
-                  </span>
-                  <span className="vitem__go mono">
-                    Näher ran <span aria-hidden="true">→</span>
                   </span>
                 </span>
               </button>
