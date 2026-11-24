@@ -6,6 +6,7 @@ import './preview.css';
 import './packliste.css';
 import './logo.css';
 import './vitrine.css';
+import './builder.css';
 import { MotionProvider } from '@/components/MotionProvider';
 import { CartProvider } from '@/components/cart/CartProvider';
 import { CartDrawer } from '@/components/cart/CartDrawer';
