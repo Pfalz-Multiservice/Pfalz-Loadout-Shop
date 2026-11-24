@@ -4,8 +4,8 @@ import { useEffect, useRef } from 'react';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useMotion } from '../MotionProvider';
 
-const TEXT = 'Wir behaupten keine Qualität. Wir zeigen sie. Naht für Naht, Faden für Faden – bis zum Moment, in dem es zählt.';
-const SIGNAL_WORDS = new Set(['zeigen', 'sie.', 'zählt.']);
+const TEXT = 'Kein Markenaufschlag. Keine Legenden. Einfach Ausrüstung, die hält – zu einem Preis, der fair bleibt.';
+const SIGNAL_WORDS = new Set(['hält', 'fair']);
 
 export function Manifest() {
   const ref = useRef<HTMLParagraphElement>(null);
@@ -40,7 +40,7 @@ export function Manifest() {
           <span className="sec-head__label" id="manifest-h">
             Manifest
           </span>
-          <span className="dim-3">Ref. PL-00 / Qualität</span>
+          <span className="dim-3">Ref. PL-00 / Haltung</span>
         </div>
         <p ref={ref} className="manifest__text">
           {TEXT.split(' ').map((w, i) => (
@@ -50,8 +50,8 @@ export function Manifest() {
           ))}
         </p>
         <p className="manifest__sub">
-          Kleines Sortiment, klare Aufgabe: vier Teile, die am Stand, im Gelände und im Einsatz funktionieren müssen.
-          Jedes mit Produktcode, jedes mit offenen Materialangaben – damit du weißt, was du trägst.
+          Vier Teile für Stand, Gelände und Alltag. Robustes Gewebe, ehrliche Angaben, Versand aus Worms. Mehr
+          versprechen wir nicht – das aber halten wir.
         </p>
       </div>
     </section>

@@ -111,7 +111,7 @@ export type Product = {
 
 export const SHOP = {
   brand: 'PFALZ LOADOUT',
-  claim: 'Gebaut für den Moment, in dem es zählt.',
+  claim: 'Ausrüstung, die hält. Zum fairen Preis.',
   coords: { lat: '49.3° N', lon: '7.8° E', label: 'Pfälzerwald' },
   origin: { lat: '49.63° N', lon: '8.36° E', label: 'Worms' },
   currency: 'EUR',

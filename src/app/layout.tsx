@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'de_DE',
     siteName: 'PFALZ LOADOUT',
-    title: 'PFALZ LOADOUT – Gebaut für den Moment, in dem es zählt.',
+    title: 'PFALZ LOADOUT – Ausrüstung, die hält. Zum fairen Preis.',
     description: 'Taktische Ausrüstung für Schießstand, Gelände und Outdoor. Vier Teile, offene Materialangaben, Versand aus Worms.',
     images: [{ url: '/media/einsatz-pfalz-1280.webp', width: 1280, height: 853, alt: 'Weinberge vor dem Pfälzerwald im Abendlicht' }],
   },

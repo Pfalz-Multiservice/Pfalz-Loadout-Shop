@@ -416,7 +416,7 @@ export function Products() {
         <h2 className="display h2">
           Vier Teile.
           <br />
-          <span className="dim">Keine Kompromisse.</span>
+          <span className="dim">Fairer Preis.</span>
         </h2>
       </div>
 
