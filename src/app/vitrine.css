@@ -356,16 +356,17 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 4px 14px 4px 6px;
+  gap: 12px;
+  min-height: 76px;
+  padding: 6px 18px 6px 8px;
   border: 0;
-  background: var(--basalt-2);
+  background: var(--basalt);
   color: var(--bone-3);
-  font-size: 0.66rem;
-  letter-spacing: 0.04em;
+  text-align: left;
   cursor: pointer;
-  transition: color 0.2s;
+  transition:
+    color 0.2s,
+    background-color 0.3s;
 }
 .vbar__tab::after {
   content: '';
@@ -373,29 +374,37 @@
   left: 0;
   right: 0;
   bottom: -1px;
-  height: 2px;
+  height: 3px;
   background: var(--signal);
   transform: scaleX(0);
-  transition: transform 0.4s var(--ease);
+  transform-origin: left;
+  transition: transform 0.45s var(--ease);
 }
 .vbar__tab:hover {
   color: var(--bone);
+  background: #fbfaf7;
 }
 .vbar__tab[aria-pressed='true'] {
   color: var(--bone);
+  background: #ffffff;
 }
 .vbar__tab[aria-pressed='true']::after {
   transform: scaleX(1);
 }
 .vbar__thumb {
   position: relative;
-  width: 34px;
-  height: 34px;
-  overflow: hidden;
-  opacity: 0.5;
-  transition: opacity 0.2s;
+  flex: none;
+  width: 64px;
+  height: 64px;
+  opacity: 0.45;
+  transition:
+    opacity 0.25s,
+    transform 0.4s var(--ease);
 }
-.vbar__tab:hover .vbar__thumb,
+.vbar__tab:hover .vbar__thumb {
+  opacity: 0.85;
+  transform: translateY(-2px);
+}
 .vbar__tab[aria-pressed='true'] .vbar__thumb {
   opacity: 1;
 }
@@ -405,10 +414,38 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  background: transparent !important;
 }
 .vbar__thumb img {
   object-fit: contain;
-  filter: brightness(1.025);
+}
+.vbar__txt {
+  display: grid;
+  gap: 3px;
+}
+.vbar__code {
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+}
+.vbar__tab[aria-pressed='true'] .vbar__code {
+  color: var(--signal-ink);
+}
+.vbar__name {
+  font-family: var(--f-display);
+  font-weight: 900;
+  font-size: 1.05rem;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+@media (max-width: 1240px) {
+  .vbar__name {
+    display: none;
+  }
+  .vbar__tab {
+    padding-right: 14px;
+  }
 }
 @media (max-width: 960px) {
   .vbar__tabs {
@@ -591,4 +628,9 @@ html.pl-vt .pcard__shot {
   .vcard__go {
     transition: none;
   }
+}
+
+/* Infopunkte blenden weich ein, sobald das Foto geladen ist (ProductStage: shotReady) */
+.stage__visual > .hotspot {
+  animation: vin 0.45s ease backwards;
 }

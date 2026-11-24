@@ -5,8 +5,10 @@ Das Bild wird auf das Produkt zugeschnitten (2 % Rand), damit es in der Auslage 
 
 Aufruf (rembg-venv):
   node scripts/medien.mjs --freisteller-liste av- > liste.json
-  python -I scripts/auslage-freistellen.py liste.json <medien>/freigestellt
+  python -I scripts/auslage-freistellen.py liste.json <medien>/freigestellt src/data/auslage.generated.json
   node scripts/medien.mjs av-
+Ausgabe-JSON je Bühnenfoto: key (freigestelltes Bild), lage (Ausschnitt im Original, Anteile l,t,r,b),
+crop (Produkt im freigestellten Bild, Anteile) – daraus berechnet die Seite Standlinie und Flugziel.
 """
 import json
 import os
@@ -23,12 +25,26 @@ from rembg import new_session, remove  # noqa: E402  (nach U2NET_HOME)
 RAND = 0.02
 
 
-def main(liste, ziel):
+def vermessen(res):
+    """Wo das Produkt im freigestellten Bild liegt (Anteile l, t, r, b)."""
+    a = np.asarray(res.getchannel("A"))
+    ys, xs = np.nonzero(a > 40)
+    w, h = res.size
+    return [round(xs.min() / w, 4), round(ys.min() / h, 4), round((xs.max() + 1) / w, 4), round((ys.max() + 1) / h, 4)]
+
+
+def main(liste, ziel, json_out=None):
     ziel = Path(ziel)
     ziel.mkdir(parents=True, exist_ok=True)
     session = new_session("isnet-general-use")
     lage = {}
+    daten = {}
     for item in json.loads(Path(liste).read_text(encoding="utf-8-sig")):
+        if item.get("nur_messen"):
+            res = Image.open(item["src"]).convert("RGBA")
+            daten[item["key"]] = {"key": item["key"], "lage": [0, 0, 1, 1], "crop": vermessen(res)}
+            print(f"OK {item['key']}: nur vermessen")
+            continue
         img = ImageOps.exif_transpose(Image.open(item["src"])).convert("RGB")
         out = remove(
             img,
@@ -101,9 +117,13 @@ def main(liste, ziel):
             lage[item["key"]] = [round(box[0] / img.width, 5), round(box[1] / img.height, 5), round(box[2] / img.width, 5), round(box[3] / img.height, 5)]
             res = res.crop(box)
         res.save(ziel / f"{item['key']}.png")
+        quelle = item["key"][3:] if item["key"].startswith("av-") else item["key"]
+        daten[quelle] = {"key": item["key"], "lage": lage.get(item["key"], [0, 0, 1, 1]), "crop": vermessen(res)}
         print(f"OK {item['key']}: {img.size} -> {res.size}")
-    print("LAGE " + json.dumps(lage))
+    if json_out:
+        Path(json_out).write_text(json.dumps(daten, indent=1), encoding="utf-8")
+        print(f"-> {json_out} ({len(daten)} Fotos)")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)

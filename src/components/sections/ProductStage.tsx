@@ -50,6 +50,26 @@ export function ProductStage({ product, index }: { product: Product; index: numb
   }, [openSpot]);
 
   useEffect(() => setShot(0), [color]);
+
+  // Infopunkte erst, wenn das gerade gezeigte Foto wirklich geladen ist (nie Punkte auf leerem Rahmen)
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [shotReady, setShotReady] = useState(false);
+  useEffect(() => {
+    const img = frameRef.current?.querySelectorAll('picture')[shot]?.querySelector('img');
+    if (!img || (img.complete && img.naturalWidth > 0)) {
+      setShotReady(true);
+      return;
+    }
+    setShotReady(false);
+    img.loading = 'eager';
+    const on = () => setShotReady(true);
+    img.addEventListener('load', on, { once: true });
+    img.addEventListener('error', on, { once: true });
+    return () => {
+      img.removeEventListener('load', on);
+      img.removeEventListener('error', on);
+    };
+  }, [shot, color, shots.length]);
   // Zubehör gewählt (z. B. QD-Öse) → direkt das Zusatzbild zeigen
   useEffect(() => setShot(extraShots.length ? baseShots.length : 0), [option]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -114,7 +134,7 @@ export function ProductStage({ product, index }: { product: Product; index: numb
           <LockBadge on={variant.option === 'mit Zahlenschloss'} />
         <QdBadge on={variant.option === '+ QD-Öse'} />
           {product.badge && <PatchBadge {...product.badge} />}
-          <div className={`stage__frame${splitOn ? ' is-split' : ''}`}>
+          <div ref={frameRef} className={`stage__frame${splitOn ? ' is-split' : ''}`}>
             {shots.length ? (
               shots.map((k, i) => (
                 <Picture
@@ -156,6 +176,7 @@ export function ProductStage({ product, index }: { product: Product; index: numb
             {colorCode(product, color)} · {colorName(color)}
           </span>
           {shots.length > 0 &&
+            shotReady &&
             product.hotspots.map((h, i) => {
               const pos = h.at[shots[shot]];
               if (!pos) return null;

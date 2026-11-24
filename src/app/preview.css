@@ -389,9 +389,10 @@
 
 /* 08.11.2026: Zubehör (Schloss, Patch) statisch in FESTER Größe über jedem Vorschaubild, darunter „inklusive“.
    Größe hängt nicht mehr vom Bild ab → nichts springt beim Bildwechsel. */
+/* 24.11.2026: deutlich größer (vorher kaum erkennbar) – wächst mit dem Vorschaubild mit (Containerbreite cqw) */
 .lockbadge,
 .pcard__media .lockbadge {
-  width: 34px;
+  width: clamp(40px, 12cqw, 66px);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -399,10 +400,10 @@
 }
 .lockbadge.patchbadge,
 .pcard__media .lockbadge.patchbadge {
-  width: 50px;
+  width: clamp(54px, 17cqw, 90px);
 }
 .badge-incl {
-  font-size: 0.52rem;
+  font-size: 0.6rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--bone-3);
@@ -428,7 +429,7 @@
 /* QD-Öse: etwas breiter, weil fast quadratisch */
 .lockbadge.qdbadge,
 .pcard__media .lockbadge.qdbadge {
-  width: 42px;
+  width: clamp(48px, 15cqw, 80px);
 }
 
 /* Labor: Hochformat-Fotos (z. B. Arbeitsmatte) groß – Hochformat-Rahmen statt kleiner Querformat-Bühne */

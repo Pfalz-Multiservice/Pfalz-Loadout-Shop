@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { PRODUCTS } from '@/data/shop';
+import { PRODUCTS, type ColorKey } from '@/data/shop';
 import { OPEN_EVENT, jumpToEl, jumpToY, scrollToEl, scrollToY, useMotion } from '../MotionProvider';
-import { Picture } from '../Picture';
+import { Picture, mediaMeta } from '../Picture';
 import { ProductStage } from './ProductStage';
 import { Arsenal } from './Arsenal';
-import { Vitrine, firstLook } from './Vitrine';
+import { Vitrine, cardLook } from './Vitrine';
 
-type VT = { finished: Promise<void>; skipTransition?: () => void };
+type VT = { finished: Promise<void>; ready?: Promise<void>; updateCallbackDone?: Promise<void>; skipTransition?: () => void };
 type VTDoc = Document & { startViewTransition?: (cb: () => void) => VT };
 type Rect = { x: number; y: number; w: number; h: number };
 type Phase = 'picking' | 'leaving' | 'returning' | null;
@@ -77,17 +77,32 @@ function bigPhoto(slug: string) {
   const w = r.w / r.h > ar ? r.h * ar : r.w;
   const h = w / ar;
   const key = (img.currentSrc || img.src).match(/\/media\/(.+)-\d+\.(?:webp|avif)/)?.[1];
-  return { rect: { x: r.x + (r.w - w) / 2, y: r.y + (r.h - h) / 2, w, h }, key, img };
+  return { rect: { x: r.x + (r.w - w) / 2, y: r.y + (r.h - h) / 2, w, h }, box: r, key, img };
 }
 
-/** Wo das freigestellte Bild der Karte auf dem großen Foto liegt */
+/**
+ * Wo das freigestellte Bild der Karte auf dem großen Foto liegt.
+ * exact = die Bühne zeigt gerade genau dieses Foto; sonst (anderes Bild gewählt) wird die Lage aus dem Rahmen
+ * und dem Seitenverhältnis des Startfotos berechnet und beim Übergang überblendet.
+ */
 function landing(slug: string, btn: HTMLElement) {
   const big = bigPhoto(slug);
+  const from = btn.dataset.from;
   const lage = btn.dataset.lage?.split(',').map(Number);
-  if (!big || !lage || lage.length !== 4 || big.key !== btn.dataset.from) return null;
+  if (!big || !from || !lage || lage.length !== 4) return null;
+  const exact = big.key === from;
+  let P = big.rect;
+  if (!exact) {
+    const m = mediaMeta(from);
+    if (!m) return null;
+    const ar = m.w / m.h;
+    const B = big.box;
+    const w = B.w / B.h > ar ? B.h * ar : B.w;
+    const h = w / ar;
+    P = { x: B.x + (B.w - w) / 2, y: B.y + (B.h - h) / 2, w, h };
+  }
   const [l, t, r, b] = lage;
-  const P = big.rect;
-  return { x: P.x + l * P.w, y: P.y + t * P.h, w: (r - l) * P.w, h: (b - t) * P.h };
+  return { x: P.x + l * P.w, y: P.y + t * P.h, w: (r - l) * P.w, h: (b - t) * P.h, exact };
 }
 
 /** Warten, bis das große Foto wirklich geladen und dekodiert ist (höchstens `max` ms) */
@@ -144,6 +159,16 @@ export function Products() {
   const [phase, setPhase] = useState<Phase>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [fx, setFx] = useState<string[]>([]);
+  /** zuletzt gewählte Farbe je Teil – die Auslage zeigt das Teil in dieser Farbe */
+  const [colors, setColors] = useState<Record<string, ColorKey>>({});
+  useEffect(() => {
+    const on = (e: Event) => {
+      const { slug, color } = (e as CustomEvent<{ slug: string; color: ColorKey }>).detail;
+      setColors((c) => (c[slug] === color ? c : { ...c, [slug]: color }));
+    };
+    window.addEventListener('pl:color', on);
+    return () => window.removeEventListener('pl:color', on);
+  }, []);
   const openRef = useRef<string | null>(null);
   const busy = useRef(false);
   const arriveT = useRef(0);
@@ -208,6 +233,9 @@ export function Products() {
           busy.current = true;
           document.documentElement.classList.add('pl-vt');
           const t = doc.startViewTransition(apply);
+          // abgebrochene Überblendung (Sicherung unten, Tab im Hintergrund) ist kein Fehler
+          t.ready?.catch(() => undefined);
+          t.updateCallbackDone?.catch(() => undefined);
           const guard = window.setTimeout(() => t.skipTransition?.(), 1500);
           t.finished.finally(() => {
             clearTimeout(guard);
@@ -278,8 +306,8 @@ export function Products() {
           setPhase(null);
           setSel(null);
         });
-        await wait(420); // großes Foto blendet unter dem fliegenden ein
-        await done(g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease', fill: 'forwards' }), 200);
+        if (to.exact) await wait(420); // großes Foto blendet unter dem fliegenden ein (deckungsgleich)
+        await done(g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: to.exact ? 200 : 420, easing: 'ease', fill: 'forwards' }), 420);
         g.remove();
         // erst jetzt: Infopunkte, Schloss, Bildwechsel
         setFx((f) => f.filter((c) => c !== 'fly-land'));
@@ -316,7 +344,8 @@ export function Products() {
       }
       // 1. Foto übernimmt, Bühne und Kaufkarte blenden aus
       const g = makeGhost(img.currentSrc || img.src, B);
-      flushSync(() => setFx(['fly-frame', 'fly-out']));
+      if (!B.exact) g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: 'ease' });
+      flushSync(() => setFx(B.exact ? ['fly-frame', 'fly-out'] : ['fly-out']));
       await wait(300);
       // 2. Umschalten: Auslage liegt genau dort, wo das Teil war → Foto fliegt bei stehender Seite in seine Karte
       openRef.current = null;
@@ -395,6 +424,7 @@ export function Products() {
         hidden={open !== null && phase === null}
         phase={phase}
         sel={sel}
+        colors={colors}
         onOpen={(slug) => swap(slug)}
         onPeek={peek}
       />
@@ -407,7 +437,7 @@ export function Products() {
           {/* Schnellwechsel zwischen den Teilen (Desktop; auf dem Handy wischt man durchs Karussell) */}
           <div className="vbar__tabs" role="group" aria-label="Teil wechseln">
             {PRODUCTS.map((p) => {
-              const { shot } = firstLook(p);
+              const view = cardLook(p, colors[p.slug]);
               return (
                 <button
                   key={p.code}
@@ -418,8 +448,11 @@ export function Products() {
                   onClick={() => swap(p.slug)}
                   onPointerEnter={() => peek(p.slug)}
                 >
-                  <span className="vbar__thumb">{shot ? <Picture k={shot} alt="" sizes="48px" /> : null}</span>
-                  {p.code}
+                  <span className="vbar__thumb">{view ? <Picture k={view.k} alt="" sizes="120px" /> : null}</span>
+                  <span className="vbar__txt">
+                    <span className="vbar__code">{p.code}</span>
+                    <span className="vbar__name">{p.name}</span>
+                  </span>
                 </button>
               );
             })}

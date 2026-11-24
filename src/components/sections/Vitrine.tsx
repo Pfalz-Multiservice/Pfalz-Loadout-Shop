@@ -4,21 +4,22 @@ import { useEffect, useRef } from 'react';
 import { COLORS, COLOR_NO, PRODUCTS, formatEuro, minPrice, type ColorKey, type Product } from '@/data/shop';
 import { Picture, hasMedia, mediaMeta } from '../Picture';
 import { useMotion } from '../MotionProvider';
+import cutsData from '@/data/auslage.generated.json';
 
 /**
- * Wie jedes Teil in seiner Karte steht – freigestellte Ansicht (scripts/auslage-freistellen.py, nur Hintergrund weg).
- * key  = freigestelltes Bild für die Karte · from = Original-Bühnenfoto, auf dem es beim Öffnen landet
- * lage = wo der Ausschnitt im Originalfoto liegt (Anteile l, t, r, b; Ausgabe des Skripts)
- * crop = wo das Produkt im freigestellten Bild liegt (Anteile, gemessen)
- * h / w = größte Höhe bzw. Breite des Produkts als Anteil der Bildfläche → optisch ausgewogene Größen
+ * Freigestellte Ansicht des ersten Fotos jeder Farbe (scripts/auslage-freistellen.py, nur Hintergrund weg).
+ * je Bühnenfoto: key = freigestelltes Bild · lage = Ausschnitt im Original (Anteile l,t,r,b) · crop = Produkt im freigestellten Bild
  */
-type Look = { key: string; from: string; lage: [number, number, number, number]; crop: [number, number, number, number]; h: number; w: number };
-const LOOK: Record<string, Look> = {
-  PL_KWT: { key: 'av-rb-schwarz-front', from: 'rb-schwarz-front', lage: [0.08545, 0.14062, 0.91406, 0.86328], crop: [0.0194, 0.0223, 0.9806, 0.9777], h: 0.74, w: 0.88 },
-  PL_AP: { key: 'av-dp-schwarz-front', from: 'dp-schwarz-front', lage: [0.10417, 0.14105, 0.92477, 0.88767], crop: [0.024, 0.0192, 0.976, 0.9796], h: 0.92, w: 0.84 },
-  PL_IFAK: { key: 'av-med-schwarz-front', from: 'med-schwarz-front', lage: [0.21631, 0.0752, 0.78223, 0.92969], crop: [0.0287, 0.0196, 0.9713, 0.9804], h: 0.78, w: 0.74 },
-  PL_GR: { key: 'sl-schwarz-stand', from: 'sl-schwarz-stand', lage: [0, 0, 1, 1], crop: [0.12, 0.16, 0.88, 0.86], h: 0.72, w: 0.74 },
+type Cut = { key: string; lage: number[]; crop: number[] };
+const CUTS = cutsData as Record<string, Cut>;
+/** größte Höhe bzw. Breite des Produkts als Anteil der Bildfläche → optisch ausgewogene Größen auf einer Standlinie */
+const SIZE: Record<string, { h: number; w: number }> = {
+  PL_KWT: { h: 0.74, w: 0.88 },
+  PL_AP: { h: 0.92, w: 0.84 },
+  PL_IFAK: { h: 0.78, w: 0.74 },
+  PL_GR: { h: 0.72, w: 0.74 },
 };
+type Look = Cut & { from: string; h: number; w: number };
 
 /** Farben in Code-Reihenfolge und das erste Foto der ersten lieferbaren Farbe (= Startbild der Produktbühne) */
 export function firstLook(p: Product) {
@@ -28,11 +29,15 @@ export function firstLook(p: Product) {
   return { colors, color, shot: (p.stage[color] ?? []).find(hasMedia) };
 }
 
-/** Bild der Karte: freigestellt, wenn es zum Startbild der Bühne passt; sonst das Startbild selbst */
-function cardShot(code: string, shot: string | undefined) {
-  const look = LOOK[code];
-  if (look && look.from === shot && hasMedia(look.key)) return { k: look.key, look };
-  return shot ? { k: shot, look: undefined } : undefined;
+/** Ansicht eines Teils in einer Farbe: freigestelltes Bild, wenn vorhanden – sonst das erste Bühnenfoto */
+export function cardLook(p: Product, color?: ColorKey) {
+  const c = color && p.stage[color] ? color : firstLook(p).color;
+  const from = (p.stage[c] ?? []).find(hasMedia);
+  if (!from) return undefined;
+  const cut = CUTS[from];
+  const size = SIZE[p.code] ?? { h: 0.75, w: 0.8 };
+  if (cut && hasMedia(cut.key)) return { k: cut.key, look: { ...cut, from, ...size } as Look };
+  return { k: from, look: undefined };
 }
 
 /** CSS-Variablen, mit denen das Foto so groß und so platziert wird, dass das Produkt genau auf der Standlinie steht */
@@ -60,6 +65,7 @@ export function Vitrine({
   hidden,
   phase,
   sel,
+  colors: chosen,
   onOpen,
   onPeek,
 }: {
@@ -70,6 +76,8 @@ export function Vitrine({
    */
   phase: 'picking' | 'leaving' | 'returning' | null;
   sel: string | null;
+  /** zuletzt gewählte Farbe je Teil (slug) → die Karte zeigt das Teil in dieser Farbe */
+  colors: Record<string, ColorKey>;
   onOpen: (slug: string) => void;
   onPeek: (slug: string) => void;
 }) {
@@ -110,10 +118,10 @@ export function Vitrine({
     >
       <ul className="vgrid">
         {PRODUCTS.map((p, i) => {
-          const { colors, shot } = firstLook(p);
+          const { colors } = firstLook(p);
           const from = minPrice(p);
           const many = p.variants.some((v) => v.priceCents !== from);
-          const card = cardShot(p.code, shot);
+          const card = cardLook(p, chosen[p.slug]);
           const place = card?.look ? placement(card.look) : undefined;
           return (
             <li key={p.code} className={`vcard${sel === p.slug ? ' is-sel' : ''}`} style={{ ['--i' as string]: i }}>

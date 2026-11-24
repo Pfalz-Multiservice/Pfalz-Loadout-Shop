@@ -123,11 +123,6 @@ const MANIFEST = [
   // Header-Logo: Rahmen (Schrift, Ringe, Fadenkreuz) mit transparentem Zielfernrohr – erzeugt von scripts/logo-rahmen.py
   { key: 'logo-rahmen', src: 'logo/logo-rahmen.png', sizes: [200, 400, 652], hq: true, alpha: true },
 
-  // ---------- Auslage: freigestellte Ansicht je Teil (NUR Hintergrund weg, Pixel unverändert) → scripts/auslage-freistellen.py ----------
-  { key: 'av-rb-schwarz-front', src: `${RB}/freisteller/schwarz/Produktversch*ffbd*.jpg`, sizes: [360, 720, 1080], alpha: true, q: 88 },
-  { key: 'av-dp-schwarz-front', src: `${DP}/freisteller/schwarz/01-front.png`, sizes: [360, 720, 1080], alpha: true, q: 88 },
-  { key: 'av-med-schwarz-front', src: `${MED}/freisteller/schwarz/IFAK_SW_001 (2).jpg`, sizes: [360, 720, 1080], alpha: true, q: 88 },
-
   // ---------- Zubehör: Zahlenschloss (freigestellt, Alpha; je Farbe eine Datei zubehoer/zahlenschloss/<farbe>.png) ----------
   // Original-Produktfotos (weißer Grund) → vorher: python -I scripts/schloss-freistellen.py (legt freigestellt/zs-<farbe>.png an)
   ...['schwarz', 'pink', 'gruen', 'orange', 'gelb', 'blau'].map((f) => ({ key: `zs-${f}`, src: `zubehoer/zahlenschloss/${f}.*`, sizes: [160, 320, 480], hq: true, alpha: true })),
@@ -138,6 +133,24 @@ const MANIFEST = [
   // Leucht-Ebene (nur farbiges Gehäuse), gleiche Leinwand wie das Schloss
   ...['pink', 'gruen', 'orange', 'gelb', 'blau'].map((f) => ({ key: `zs-${f}-glow`, src: `zubehoer/zahlenschloss/${f}.*`, sizes: [160, 320, 480], hq: true, alpha: true })),
 ];
+
+/**
+ * Auslage: freigestellte Ansicht des ersten Fotos JEDER Farbe (NUR Hintergrund weg, Pixel unverändert).
+ * Ablauf: node scripts/medien.mjs --freisteller-liste av- > liste.json
+ *         python -I scripts/auslage-freistellen.py liste.json <MEDIEN>/freigestellt src/data/auslage.generated.json
+ *         node scripts/medien.mjs av-
+ * Gurt-Fotos sind schon freigestellt (sl-…-stand) → werden nur vermessen.
+ */
+const AV_FROM = [
+  'rb-schwarz-front', 'rb-oliv-front', 'rb-coyote-front', 'rb-camo-front',
+  'dp-schwarz-front', 'dp-oliv-front',
+  'med-schwarz-front', 'med-oliv-front', 'med-coyote-front', 'med-rot-stage', 'med-camo-stage', 'med-acu-stage',
+];
+export const AV_MEASURE = ['sl-schwarz-stand', 'sl-oliv-stand'];
+for (const k of AV_FROM) {
+  const item = MANIFEST.find((m) => m.key === k);
+  if (item) MANIFEST.push({ key: `av-${k}`, src: item.src, sizes: [360, 720, 1080], alpha: true, q: 88 });
+}
 
 /**
  * Bühnenfotos, die freigestellt werden (Hintergrund weg, Farbstich korrigiert, weicher Schatten).
@@ -153,7 +166,7 @@ const CUT_KEYS = new Set([
   'zs-schwarz', 'zs-pink', 'zs-gruen', 'zs-orange', 'zs-gelb', 'zs-blau',
   'zs-pink-glow', 'zs-gruen-glow', 'zs-orange-glow', 'zs-gelb-glow', 'zs-blau-glow',
   'zb-patch', 'zb-patch-glow', 'zb-qd',
-  'av-rb-schwarz-front', 'av-dp-schwarz-front', 'av-med-schwarz-front',
+  ...AV_FROM.map((k) => `av-${k}`),
 ]);
 const CUT_DIR = path.join(SRC, 'freigestellt');
 
@@ -175,6 +188,9 @@ async function run() {
     const nur = process.argv[process.argv.indexOf('--freisteller-liste') + 1] ?? '';
     for (const item of MANIFEST.filter((m) => CUT_KEYS.has(m.key) && m.key.includes(nur))) {
       liste.push({ key: item.key, src: (await resolveSrc(item.src)).split(path.sep).join('/') });
+    }
+    if (nur === 'av-') {
+      for (const k of AV_MEASURE) liste.push({ key: k, src: path.join(CUT_DIR, `${k}.png`).split(path.sep).join('/'), nur_messen: true });
     }
     process.stdout.write(JSON.stringify(liste, null, 1));
     return;

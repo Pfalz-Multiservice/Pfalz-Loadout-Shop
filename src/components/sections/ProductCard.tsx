@@ -26,6 +26,10 @@ export function useVariantPicker(product: Product) {
     [product, color],
   );
   const [option, setOption] = useState(first.option ?? '');
+  // Auslage zeigt das Teil in der zuletzt gewählten Farbe (Products.tsx hört auf dieses Ereignis)
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('pl:color', { detail: { slug: product.slug, color } }));
+  }, [product.slug, color]);
   useEffect(() => {
     if (!options.includes(option)) setOption(options[0]);
   }, [options, option]);
