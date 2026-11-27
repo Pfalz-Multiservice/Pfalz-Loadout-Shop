@@ -10,6 +10,7 @@ import { LockBadge } from '../LockBadge';
 import { PatchBadge } from '../PatchBadge';
 import { QdBadge } from '../QdBadge';
 import { ShotArrows } from '../ShotArrows';
+import { GpsrInfo } from './GpsrInfo';
 import { useVariantPicker } from './ProductCard';
 
 const STOCK_TEXT = { lager: 'Auf Lager – Versand in 1–2 Werktagen', wenige: 'Nur noch wenige', ausverkauft: 'Ausverkauft' };
@@ -239,6 +240,7 @@ export function ProductStage({ product, index }: { product: Product; index: numb
               </dl>
             </details>
           )}
+          <GpsrInfo kennung={colorCode(product, color)} style={{ marginTop: product.specs.length > 4 ? 0 : -16, marginBottom: 16 }} />
 
           <div className="picker">
             <fieldset>

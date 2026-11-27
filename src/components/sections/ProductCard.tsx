@@ -6,6 +6,7 @@ import { LockBadge } from '../LockBadge';
 import { PatchBadge } from '../PatchBadge';
 import { QdBadge } from '../QdBadge';
 import { ShotArrows } from '../ShotArrows';
+import { GpsrInfo } from './GpsrInfo';
 import { Picture, hasMedia, lockSpace } from '../Picture';
 import { useCart } from '../cart/CartProvider';
 import { pull } from '../MotionProvider';
@@ -171,6 +172,7 @@ export function ProductCard({ product, index }: { product: Product; index: numbe
           <p className="sheet__desc">{product.description}</p>
           {product.note && <p className="sheet__note">{product.note}</p>}
         </details>
+        <GpsrInfo kennung={variant.sku} style={{ marginTop: 8 }} />
       </div>
     </article>
   );
