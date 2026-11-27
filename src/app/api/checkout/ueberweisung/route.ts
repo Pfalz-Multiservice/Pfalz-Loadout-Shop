@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { OrderError, addressText, orderNumber, orderText, parseOrder, rateLimit, siteUrl } from '@/lib/order';
-import { mailConfigured, sendMail, shopInbox, signature } from '@/lib/mail';
+import { gewaehrleistungAnhang, mailConfigured, rechtsHinweis, sendMail, shopInbox, signature } from '@/lib/mail';
 import { formatEuro, SHOP } from '@/data/shop';
 import { bankDetails } from '@/lib/bank';
 
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
     await sendMail({
       to: customer.email,
       subject: `Deine Bestellung ${orderNo} – Bankverbindung`,
-      text: `Hallo ${customer.firstName},\n\ndanke für deine Bestellung bei PFALZ LOADOUT. Bitte überweise den Betrag innerhalb von 7 Tagen – sobald er da ist, verschicken wir in ${SHOP.shipping.handlingDays}.\n\n${bankText}\n\nDEINE BESTELLUNG\n${sum}\n\nLieferadresse:\n${addr}\n\nWiderrufsbelehrung und AGB: ${site}/widerruf · ${site}/agb\n${signature()}`,
+      text: `Hallo ${customer.firstName},\n\ndanke für deine Bestellung bei PFALZ LOADOUT. Bitte überweise den Betrag innerhalb von 7 Tagen – sobald er da ist, verschicken wir in ${SHOP.shipping.handlingDays}.\n\n${bankText}\n\nDEINE BESTELLUNG\n${sum}\n\nLieferadresse:\n${addr}\n\n${rechtsHinweis(site)}\n${signature()}`,
+      attachments: gewaehrleistungAnhang(site),
     });
 
     return NextResponse.json({ orderNo });

@@ -5,7 +5,31 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import { SHOP } from '@/data/shop';
 
-type Mail = { to: string; subject: string; text: string; replyTo?: string };
+type Mail = {
+  to: string;
+  subject: string;
+  text: string;
+  replyTo?: string;
+  attachments?: { filename: string; href: string; contentType?: string }[];
+};
+
+/**
+ * Harmonisierte EU-Mitteilung zur gesetzlichen Gewährleistung (DVO (EU) 2025/1960)
+ * als Anhang der Bestellbestätigung – offizielle Datei, wird von der eigenen Website geladen.
+ */
+export const gewaehrleistungAnhang = (site: string) => [
+  {
+    filename: 'Gesetzliche-Gewaehrleistung-EU.png',
+    href: `${site}/media/recht/gewaehrleistung-eu-mitteilung-de.png`,
+    contentType: 'image/png',
+  },
+];
+
+/** Textbaustein für Bestellmails: Rechtstexte, Widerrufsfunktion, Gewährleistung */
+export const rechtsHinweis = (site: string) =>
+  `Widerrufsbelehrung und AGB: ${site}/widerruf · ${site}/agb\n` +
+  `Vertrag online widerrufen: ${site}/vertrag-widerrufen\n` +
+  `Im Anhang findest du die EU-Mitteilung zur gesetzlichen Gewährleistung (mindestens zwei Jahre).`;
 
 let transport: Transporter | null = null;
 

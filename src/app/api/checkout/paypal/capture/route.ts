@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { captureOrder, type PaypalOrder } from '@/lib/paypal';
-import { sendMail, shopInbox, signature } from '@/lib/mail';
+import { gewaehrleistungAnhang, rechtsHinweis, sendMail, shopInbox, signature } from '@/lib/mail';
 import { siteUrl } from '@/lib/order';
 import { SHOP } from '@/data/shop';
 
@@ -47,7 +47,8 @@ export async function GET(req: Request) {
           ? sendMail({
               to: buyer,
               subject: `Deine Bestellung ${s.orderNo} bei PFALZ LOADOUT`,
-              text: `Hallo ${order.payer?.name?.given_name ?? ''},\n\ndanke für deine Bestellung – deine Zahlung über PayPal ${pending ? 'wird gerade von PayPal geprüft' : 'ist eingegangen'}.\nWir packen in Worms und verschicken in ${SHOP.shipping.handlingDays}.\n\nBestellnummer: ${s.orderNo}\n\n${s.items}\n\nGesamt: ${s.total}\n${SHOP.vatNote}\n\nLieferadresse:\n${s.addr}\n\nWiderrufsbelehrung und AGB: ${site}/widerruf · ${site}/agb\n${signature()}`,
+              text: `Hallo ${order.payer?.name?.given_name ?? ''},\n\ndanke für deine Bestellung – deine Zahlung über PayPal ${pending ? 'wird gerade von PayPal geprüft' : 'ist eingegangen'}.\nWir packen in Worms und verschicken in ${SHOP.shipping.handlingDays}.\n\nBestellnummer: ${s.orderNo}\n\n${s.items}\n\nGesamt: ${s.total}\n${SHOP.vatNote}\n\nLieferadresse:\n${s.addr}\n\n${rechtsHinweis(site)}\n${signature()}`,
+              attachments: gewaehrleistungAnhang(site),
             })
           : Promise.resolve(),
       ]);
