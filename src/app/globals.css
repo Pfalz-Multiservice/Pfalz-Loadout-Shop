@@ -2353,3 +2353,93 @@ textarea {
 .cline__img picture {
   background-color: transparent !important;
 }
+
+/* Widerrufsfunktion (§ 356a BGB) und Gewährleistungshinweis */
+.ftr .ftr__widerruf {
+  display: inline-block;
+  margin-top: 10px;
+  color: rgb(244, 243, 239);
+}
+.widerruf-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 28px;
+}
+.widerruf-form label {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: var(--bone-2);
+}
+.widerruf-form .btn {
+  margin-top: 18px;
+  justify-self: start;
+}
+.widerruf-daten {
+  display: grid;
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 16px 0 20px;
+}
+.widerruf-daten dt {
+  color: var(--bone-3);
+}
+.widerruf-daten dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.widerruf-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+@media (max-width: 560px) {
+  .widerruf-daten {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.gewaehr {
+  margin: 0 0 16px;
+  border-top: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line-2);
+  font-size: 0.9rem;
+  color: var(--bone-2);
+}
+.gewaehr summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+}
+.gewaehr summary::-webkit-details-marker {
+  display: none;
+}
+.gewaehr summary:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+.gewaehr[open] .gewaehr__plus {
+  transform: rotate(45deg);
+}
+.gewaehr__plus {
+  transition: transform 160ms ease-out;
+}
+.gewaehr img {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  margin: 4px auto 10px;
+  background: #fff;
+}
+.gewaehr p {
+  margin: 0 0 12px;
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gewaehr__plus {
+    transition: none;
+  }
+}

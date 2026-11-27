@@ -168,6 +168,29 @@ export function Checkout() {
               </span>
             </label>
 
+            <details className="gewaehr">
+              <summary>
+                <span>Deine gesetzlichen Gewährleistungsrechte</span>
+                <span className="gewaehr__plus" aria-hidden="true">
+                  +
+                </span>
+              </summary>
+              {/* Harmonisierte EU-Mitteilung, DVO (EU) 2025/1960 Anhang I – offizielle Datei, unverändert */}
+              <img
+                src="/media/recht/gewaehrleistung-eu-mitteilung-de.png"
+                width={1654}
+                height={2339}
+                loading="lazy"
+                alt="EU-Mitteilung „Gesetzliche Gewährleistung“: Mindestens zwei Jahre gesetzliche Gewährleistung der Vertragsmäßigkeit für Waren, die in der Europäischen Union verkauft werden. Verkäufer haften für jede Vertragswidrigkeit, die bei Lieferung bestand und innerhalb des Gewährleistungszeitraums erkennbar wird, und müssen kostenlose Nachbesserung oder Ersatzlieferung, in bestimmten Fällen Preisminderung oder vollständige Erstattung anbieten. Melden Sie dem Verkäufer das Problem so bald wie möglich und legen Sie einen Kaufnachweis vor."
+              />
+              <p>
+                Weitere Informationen:{' '}
+                <a href="https://europa.eu/youreurope/garantien" target="_blank" rel="noopener">
+                  europa.eu/youreurope/garantien
+                </a>
+              </p>
+            </details>
+
             {error && (
               <p className="err" role="alert">
                 {error}

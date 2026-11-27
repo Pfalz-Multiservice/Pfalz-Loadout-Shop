@@ -25,6 +25,11 @@ export default function Datenschutz() {
         Dein Warenkorb wird im lokalen Speicher deines Browsers (localStorage) abgelegt, damit er beim nächsten Besuch noch da ist. Diese
         Daten verlassen deinen Browser erst, wenn du bestellst. Rechtsgrundlage: § 25 Abs. 2 Nr. 2 TDDDG (technisch erforderlich).
       </p>
+      <p>
+        Damit die Startanimation (Blick durchs Zielfernrohr) nur einmal pro Besuch läuft, merkt sich die Seite im Sitzungsspeicher deines
+        Browsers (sessionStorage, Eintrag „pl-intro-gesehen“), dass du sie schon gesehen hast. Der Eintrag wird beim Schließen des
+        Browser-Tabs gelöscht und nicht an uns übertragen. Rechtsgrundlage: § 25 Abs. 2 Nr. 2 TDDDG.
+      </p>
 
       <h2>3. Hosting</h2>
       <p>
@@ -57,7 +62,15 @@ export default function Datenschutz() {
         Art. 6 Abs. 1 lit. a DSGVO. Abmelden kannst du dich jederzeit per Mail an {c.email} oder über den Link in jeder Drop-Info.
       </p>
 
-      <h2>8. Deine Rechte</h2>
+      <h2>8. Widerruf über die Website</h2>
+      <p>
+        Wenn du über „Vertrag widerrufen“ widerrufst, verarbeiten wir Name, E-Mail-Adresse, Bestellangabe, die genannten Artikel sowie
+        Datum und Uhrzeit des Eingangs. Wir schicken dir damit die gesetzlich vorgeschriebene Eingangsbestätigung und wickeln den Widerruf
+        ab (Art. 6 Abs. 1 lit. b und c DSGVO, § 356a BGB). Die Angaben werden per E-Mail an uns übermittelt und mit den Bestellunterlagen
+        aufbewahrt.
+      </p>
+
+      <h2>9. Deine Rechte</h2>
       <p>
         Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch sowie
         auf Widerruf erteilter Einwilligungen. Außerdem kannst du dich bei einer Datenschutz-Aufsichtsbehörde beschweren, z. B. beim

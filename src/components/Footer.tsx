@@ -95,6 +95,11 @@ export function Footer() {
               <li>
                 <a href="/versand-zahlung">Versand & Zahlung</a>
               </li>
+              <li>
+                <a className="btn tab ftr__widerruf" href="/vertrag-widerrufen">
+                  Vertrag widerrufen
+                </a>
+              </li>
             </ul>
           </div>
         </div>
