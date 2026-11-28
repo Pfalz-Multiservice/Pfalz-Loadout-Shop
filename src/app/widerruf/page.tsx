@@ -3,7 +3,7 @@ import { SHOP } from '@/data/shop';
 
 export const metadata: Metadata = { title: 'Widerrufsbelehrung – PFALZ LOADOUT', alternates: { canonical: '/widerruf' } };
 
-/** Muster-Widerrufsbelehrung nach Anlage 1 zu Art. 246a § 1 Abs. 2 S. 2 EGBGB (Warenkauf) */
+/** Muster-Widerrufsbelehrung nach Anlage 1 zu Art. 246a § 1 Abs. 2 S. 2 EGBGB (Warenkauf), Stand 19.06.2026 */
 export default function Widerruf() {
   const c = SHOP.contact;
   return (
@@ -20,9 +20,17 @@ export default function Widerruf() {
       </p>
       <p>
         Um Ihr Widerrufsrecht auszuüben, müssen Sie uns ({c.company}, Inh. {c.owner}, {c.street}, {c.zip} {c.city}, Telefon: {c.phone},
-        E-Mail: {c.email}) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder E-Mail) über Ihren Entschluss,
-        diesen Vertrag zu widerrufen, informieren. Sie können dafür das beigefügte Muster-Widerrufsformular verwenden, das jedoch nicht
-        vorgeschrieben ist.
+        E-Mail: {c.email}) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder eine E-Mail) über Ihren
+        Entschluss, diesen Vertrag zu widerrufen, informieren. Sie können dafür das beigefügte Muster-Widerrufsformular verwenden, das jedoch
+        nicht vorgeschrieben ist.
+      </p>
+      {/* Baustein für die Widerrufsfunktion nach § 356a BGB (Gestaltungshinweis 3, Muster Stand 19.06.2026) */}
+      <p>
+        Sie können Ihr Widerrufsrecht auch online unter{' '}
+        <a href="/vertrag-widerrufen">pfalz-loadout.de/vertrag-widerrufen</a> (Schaltfläche „Vertrag widerrufen“ im Fußbereich jeder
+        Seite) ausüben. Wenn Sie diese Online-Funktion nutzen, übermitteln wir Ihnen auf einem dauerhaften Datenträger (z. B. durch eine
+        E-Mail) unverzüglich eine Eingangsbestätigung mit Informationen zum Inhalt der Widerrufserklärung sowie dem Datum und der Uhrzeit
+        ihres Eingangs.
       </p>
       <p>Zur Wahrung der Widerrufsfrist reicht es aus, dass Sie die Mitteilung über die Ausübung des Widerrufsrechts vor Ablauf der Widerrufsfrist absenden.</p>
       <h2>Folgen des Widerrufs</h2>
